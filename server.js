@@ -8,6 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import chatRouter from './routes/chat.js';
+import imageRouter from './routes/image.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,9 +17,9 @@ const app = express();
 
 // Hides X-Powered-By, sets HSTS/frame/content-type headers, and locks down
 // what the page is allowed to load or connect to. connectSrc is 'self'
-// only — the browser never talks to Gemini/Hugging Face directly, so even
-// a compromised script in the page can't be used to exfiltrate to them or
-// reveal which providers are in use.
+// only — the browser never talks to Gemini directly, so even a compromised
+// script in the page can't be used to exfiltrate to the provider or reveal
+// which model is in use.
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -45,9 +46,9 @@ if (process.env.ALLOWED_ORIGIN) {
 
 app.use(express.json({ limit: '1mb' }));
 
-// Rate limit every /api/* route per IP. Free-tier provider quotas are small
+// Rate limit every /api/* route per IP. Free-tier Gemini quotas are small
 // and shared across all your users — this is what stops one visitor (or
-// one bot) from burning through the day's Gemini/Hugging Face quota.
+// one bot) from burning through the day's quota.
 const apiLimiter = rateLimit({
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 min
   max: Number(process.env.RATE_LIMIT_MAX) || 40, // requests per window per IP
@@ -80,6 +81,7 @@ app.get('/api/config', (req, res) => {
 });
 
 app.use('/api/chat', requireAccessCode, chatRouter);
+app.use('/api/image', requireAccessCode, imageRouter);
 
 // Serve the landing page as the first route the visitor sees.
 app.get('/', (req, res) => {
@@ -89,7 +91,7 @@ app.get('/', (req, res) => {
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 const PORT = process.env.PORT || 3000;
-const hasAnyAiKey = Boolean(process.env.GEMINI_API_KEY || process.env.DEEPSEEK_API_KEY);
+const hasAnyAiKey = Boolean(process.env.GEMINI_API_KEY);
 
 app.listen(PORT, () => {
   console.log(`Vux AI Studio is running at http://localhost:${PORT}`);

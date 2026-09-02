@@ -19,42 +19,30 @@ router.post('/', async (req, res) => {
       vertexai: false,
     });
 
-    const generationConfig = {
-      temperature: 1,
-      max_output_tokens: 65536,
-      top_p: 0.95,
-      thinking_level: 'minimal',
-      image_config: {
-        imageSize: '1K',
+    const result = await ai.models.generateContent({
+      model: process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image-preview',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        responseModalities: ['TEXT', 'IMAGE'],
       },
-    };
-
-    const interaction = await ai.interactions.create({
-      model: 'models/gemini-3.1-flash-lite-image',
-      input: prompt,
-      generation_config: generationConfig,
-      response_modalities: ['image', 'text'],
     });
 
     let imageData = null;
-    if (interaction.steps) {
-      for (const step of interaction.steps) {
-        if (step.type === 'model_output' && step.content) {
-          for (const part of step.content) {
-            if (part.type === 'text') {
-              console.log(part.text);
-            }
-            else if (part.type === 'image') {
-              imageData = part.data;
-              break;
-            }
-          }
+    let responseText = '';
+
+    for (const candidate of result?.candidates || []) {
+      for (const part of candidate?.content?.parts || []) {
+        if (part.inlineData?.data) {
+          imageData = part.inlineData.data;
+        }
+        if (part.text) {
+          responseText = part.text;
         }
       }
     }
 
     if (!imageData) {
-      console.error('[image] No image data in response');
+      console.error('[image] No image data in response', responseText || result);
       return res.status(502).json({ error: GENERIC_ERROR.image });
     }
 

@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+node_modules/
+forge-ai-studio-react/node_modules/
+forge-ai-studio-react/dist/
+dist/
+*.log
+.DS_Store
+.vscode/
+coverage/

@@ -1,7 +1,5 @@
-import { Router } from 'express';
+import crypto from 'crypto';
 import { IDENTITY_PROMPT, scrubIdentity, GENERIC_ERROR } from '../lib/identity.js';
-
-const router = Router();
 
 const FORCE_ENGLISH_INSTRUCTIONS = `
 You are Vux AI Studio.
@@ -25,41 +23,24 @@ function looksLikeCodingRequest(text = '') {
 }
 
 function buildMessages(messages) {
-  const normalizedMessages = messages.map((m) => {
-    if (m.role !== 'user') {
-      return {
-        role: 'assistant',
-        content: m.content,
-      };
+  return messages.map((message) => {
+    if (message.role !== 'user') {
+      return { role: 'assistant', content: String(message.content || '') };
     }
 
-    const content = String(m.content || '');
+    const content = String(message.content || '');
     const finalContent = looksLikeCodingRequest(content)
       ? content
       : `${content}\n\nMake it in English.`;
 
-    return {
-      role: 'user',
-      content: finalContent,
-    };
+    return { role: 'user', content: finalContent };
   });
-
-  return [
-    { role: 'system', content: `${IDENTITY_PROMPT}\n\n${FORCE_ENGLISH_INSTRUCTIONS}` },
-    ...normalizedMessages,
-  ];
-}
-
-function isProviderLimitError(status, payload = {}) {
-  if (status === 429 || status === 503 || status === 500) return true;
-  const text = `${payload?.error?.message || ''} ${payload?.message || ''}`.toLowerCase();
-  return /quota|rate limit|limit reached|temporarily unavailable|overloaded|busy|429|too many requests/i.test(text);
 }
 
 async function callGemini(messages) {
-  const contents = messages.map((m) => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }],
+  const contents = messages.map((message) => ({
+    role: message.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: String(message.content || '') }],
   }));
 
   const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
@@ -84,17 +65,35 @@ async function callGemini(messages) {
   }
 
   const rawText =
-    data.candidates?.[0]?.content?.parts?.map((p) => p.text).join('\n') ||
+    data.candidates?.[0]?.content?.parts?.map((part) => part.text).join('\n') ||
     "I couldn't generate a response to that — try rephrasing.";
 
   return scrubIdentity(rawText);
 }
 
-// POST /api/chat  { messages: [{ role: 'user'|'assistant', content: string }] }
-router.post('/', async (req, res) => {
-  const { messages } = req.body;
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+  const messages = body.messages;
+
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'messages array is required' });
+  }
+
+  const requiresAccessCode = Boolean(process.env.APP_ACCESS_CODE);
+  if (requiresAccessCode) {
+    const provided = req.headers['x-vux-access-code'] || '';
+    const configured = process.env.APP_ACCESS_CODE || '';
+    const a = Buffer.from(String(provided));
+    const b = Buffer.from(String(configured));
+    const valid = a.length === b.length && crypto.timingSafeEqual(a, b);
+
+    if (!valid) {
+      return res.status(401).json({ error: 'Invalid or missing access code' });
+    }
   }
 
   if (!process.env.GEMINI_API_KEY) {
@@ -103,13 +102,11 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const text = await callGemini(messages);
-    return res.json({ text });
+    const text = await callGemini(buildMessages(messages));
+    return res.status(200).json({ text });
   } catch (err) {
     console.error('[chat] Gemini failed:', err?.payload || err.message || err);
     const status = err?.status >= 400 ? err.status : 502;
     return res.status(status >= 500 ? 502 : status).json({ error: GENERIC_ERROR.chat });
   }
-});
-
-export default router;
+}

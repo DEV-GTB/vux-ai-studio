@@ -197,7 +197,34 @@
 </div>
 <header class="fixed top-0 w-full z-50 bg-[#020d1d]/80 backdrop-blur-md border-b border-white/10 transition-all duration-200 ease-in-out">
 <div class="flex justify-between items-center px-margin-desktop h-16 max-w-[1280px] mx-auto w-full">
-<div class="flex items-center h-10 w-auto"><img src="https://lh3.googleusercontent.com/aida-public/AB6AXuALV_T9GseCK2UiieoqsTdT4B_LoAWLwWbgIDHwUmVlWfjZlT0tmTk_KW8WYmXmiWUmZB_57mHYoJLYXgPJYGSqPxHAXZnQ9uYlRvo8lrAhetPrH1LSV7vHNclUKFZ3NCahTLeBPyj_sQQQtm1-foEN-1Y0BvfaZcgXsUGxOuWgpJajnSE6GwKc-EYByMDIqtSqIwZBipW8CgOQnWmJY8tO0250A4XGDAFR8cHvvNzzsYLzJ2IkwHdI8p5jL9A_weVLWw" alt="Vux AI Studio Logo" class="h-full w-auto object-contain"></div>
+<div class="flex items-center gap-3 h-10 w-auto">
+  <svg class="h-10 w-10 md:h-12 md:w-12" viewBox="0 0 180 150" aria-label="Vux AI Studio logo" role="img">
+    <defs>
+      <linearGradient id="vuxGlowLeft" x1="0%" x2="100%" y1="0%" y2="100%">
+        <stop offset="0%" stop-color="#5ce0ff"/>
+        <stop offset="48%" stop-color="#4aa7ff"/>
+        <stop offset="100%" stop-color="#7a6bff"/>
+      </linearGradient>
+      <linearGradient id="vuxGlowRight" x1="100%" x2="0%" y1="0%" y2="100%">
+        <stop offset="0%" stop-color="#ff75d8"/>
+        <stop offset="50%" stop-color="#c96eff"/>
+        <stop offset="100%" stop-color="#7ecbff"/>
+      </linearGradient>
+      <filter id="vuxSoftGlow" x="-30%" y="-30%" width="160%" height="160%">
+        <feGaussianBlur stdDeviation="8" result="blur"/>
+        <feMerge>
+          <feMergeNode in="blur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    <path d="M20 118 L62 34 C75 8 100 8 113 34 L161 118" fill="none" stroke="url(#vuxGlowLeft)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" filter="url(#vuxSoftGlow)" opacity="0.92"/>
+    <path d="M84 88 L122 10 C130 0 144 0 152 10 L162 26 C170 37 162 50 149 48 L125 45 L96 94" fill="none" stroke="url(#vuxGlowRight)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" filter="url(#vuxSoftGlow)" opacity="0.9"/>
+    <path d="M48 62 L83 62" stroke="rgba(255,255,255,0.8)" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+    <path d="M86 58 L127 58" stroke="rgba(255,255,255,0.7)" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+    <path d="M122 14 L126 8 L130 14 L136 18 L130 22 L126 28 L122 22 L116 18 L122 14Z" fill="#ffe7ff" filter="url(#vuxSoftGlow)"/>
+  </svg>
+</div>
 <nav class="hidden md:flex gap-10 items-center">
 <a class="text-gray-300 hover:text-white transition-colors duration-200 text-[15px]" href="#">Platform</a>
 <a class="text-gray-300 hover:text-white transition-colors duration-200 text-[15px]" href="#">Solutions</a>
