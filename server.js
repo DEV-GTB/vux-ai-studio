@@ -83,12 +83,19 @@ app.get('/api/config', (req, res) => {
 app.use('/api/chat', requireAccessCode, chatRouter);
 app.use('/api/image', requireAccessCode, imageRouter);
 
-// Serve the landing page as the first route the visitor sees.
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
-});
+const reactDist = path.join(__dirname, 'forge-ai-studio-react', 'dist');
+const legacyPublic = path.join(__dirname, 'public');
 
-app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+// Serve the compiled React app when it exists, with the legacy UI as a local fallback.
+app.use(express.static(reactDist, { index: 'index.html' }));
+app.use(express.static(legacyPublic, { index: false }));
+
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
+  res.sendFile(path.join(reactDist, 'index.html'), (error) => {
+    if (error) next();
+  });
+});
 
 const PORT = process.env.PORT || 3000;
 const hasAnyAiKey = Boolean(process.env.GEMINI_API_KEY);

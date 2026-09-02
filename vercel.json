@@ -1,7 +1,8 @@
 {
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "outputDirectory": "forge-ai-studio-react/dist",
   "rewrites": [
-    { "source": "/", "destination": "/landing.html" },
-    { "source": "/username", "destination": "/username.html" },
-    { "source": "/chat", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
