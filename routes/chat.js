@@ -50,6 +50,23 @@ function buildMessages(messages) {
   ];
 }
 
+function getIdentityResponse(messages) {
+  const latestUserMessage = [...messages].reverse().find((message) => message.role === 'user');
+  const text = String(latestUserMessage?.content || '').toLowerCase().trim();
+  if (!text) return null;
+
+  if (/^(who are you|what are you|what is this ai|who is this ai)\??$/.test(text)) {
+    return 'I am Vux AI Studio, your secure assistant for chat, coding help, and creative work.';
+  }
+  if (/\b(who (made|created|built|developed) you|who is your founder|who founded you)\b/.test(text)) {
+    return 'Vux AI Studio was developed by the GTB community. The founders are Thariq and Azhar.';
+  }
+  if (/\bwho (are|is) the (co-?founders?|engineering team)\b/.test(text)) {
+    return 'The Co-Founders are Sreehari K.M and Gokul. Engineering is led by Azhar and Thariq.';
+  }
+  return null;
+}
+
 function isProviderLimitError(status, payload = {}) {
   if (status === 429 || status === 503 || status === 500) return true;
   const text = `${payload?.error?.message || ''} ${payload?.message || ''}`.toLowerCase();
@@ -96,6 +113,9 @@ router.post('/', async (req, res) => {
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'messages array is required' });
   }
+
+  const identityResponse = getIdentityResponse(messages);
+  if (identityResponse) return res.json({ text: identityResponse });
 
   if (!process.env.GEMINI_API_KEY) {
     console.error('[chat] GEMINI_API_KEY is not set on the server');
