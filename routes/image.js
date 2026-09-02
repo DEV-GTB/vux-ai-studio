@@ -50,7 +50,11 @@ router.post('/', async (req, res) => {
     res.json({ image: `data:image/png;base64,${imageData}` });
   } catch (err) {
     console.error('[image] request failed:', err?.message || err);
-    res.status(502).json({ error: err?.message || GENERIC_ERROR.image });
+    const status = err?.status === 429 ? 429 : 502;
+    const error = status === 429
+      ? 'Image generation quota is unavailable for this Gemini project. Check Google AI Studio billing, quota, and image-model access.'
+      : GENERIC_ERROR.image;
+    res.status(status).json({ error });
   }
 });
 
