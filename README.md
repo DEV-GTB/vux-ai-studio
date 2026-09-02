@@ -2,7 +2,7 @@
 
 Vux AI Studio is a privacy-first assistant workspace for chat, ideation, and creative problem solving.
 
-The app is designed to feel like a clean AI studio experience while keeping the identity focused on Vux and using the Gemini API for generation.
+The app is designed to feel like a clean AI studio experience while keeping the identity focused on Vux and using the GTB AI SYSTEM
 
 ## What this app includes
 
@@ -43,7 +43,6 @@ For public deployment, the recommended setup is:
 - Keep API keys on the server only
 - Do not expose keys or provider details in the browser
 - Avoid public sharing of the real environment file
-- Use a shared access code for public deployments
 
 ## Branding
 

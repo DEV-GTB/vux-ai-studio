@@ -48,6 +48,7 @@ function App() {
       case 'image': return <Image setCurrentPage={setCurrentPage} username={username} />
       case 'settings': return <Settings setCurrentPage={setCurrentPage} username={username} />
       case 'help': return <Help setCurrentPage={setCurrentPage} username={username} />
+      case 'terms': return <Terms onBack={() => { setCurrentPage('home'); window.history.pushState({}, '', '/') }} />
       default: return <Home setCurrentPage={setCurrentPage} username={username} />
     }
   }
