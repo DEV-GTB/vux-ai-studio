@@ -1,5 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 
+const dailyInsights = [
+  "AI gives you the speed, Your Imagination gives it direction.",
+  "AI can generate the code, Only you can decide what's worth building.",
+  "The developer of tomorrow won't fear AI, They'll build with it.",
+  "AI can generate possibilities, Humans give those possibilities purpose.",
+  "VUX is where vision meets intelligence, and intelligence becomes creation.",
+  "Forge your vision, Shape your experience, Build beyond limits.",
+  "AI is not here to replace developers, but to empower them to create beyond limits."
+]
+
 export function Home({ setCurrentPage, username }) {
   const [projects] = useState([
     { name: 'Game Theory Building Engine', type: 'Python Project', icon: '🐍', status: 'Active', edited: '2 hours ago', color: 'primary' },
@@ -7,16 +17,6 @@ export function Home({ setCurrentPage, username }) {
     { name: 'Skyfall Game', type: 'C++ Project', icon: '🎮', status: 'Active', edited: '3 days ago', color: 'success' },
     { name: 'Portfolio Site', type: 'Web Project', icon: '🌐', status: 'Active', edited: '1 week ago', color: 'tech' },
   ])
-
-  const dailyInsights = [
-    "AI gives you the speed, Your Imagination gives it direction.",
-    "AI can generate the code, Only you can decide what's worth building.",
-    "The developer of tomorrow won't fear AI, They'll build with it.",
-    "AI can generate possibilities, Humans give those possibilities purpose.",
-    "VUX is where vision meets intelligence, and intelligence becomes creation.",
-    "Forge your vision, Shape your experience, Build beyond limits.",
-    "AI is not here to replace developers, but to empower them to create beyond limits."
-  ]
 
   const [currentInsightIndex, setCurrentInsightIndex] = useState(0)
   const [displayedInsight, setDisplayedInsight] = useState('')
@@ -90,6 +90,8 @@ status: "Creating magic..."`
 
   useEffect(() => {
     currentIndexRef.current = 0
+    setDisplayedInsight('')
+    setIsTyping(true)
     
     const currentInsight = dailyInsights[currentInsightIndex] || ''
     
@@ -112,7 +114,7 @@ status: "Creating magic..."`
         clearInterval(typingIntervalRef.current)
       }
     }
-  }, [currentInsightIndex, dailyInsights])
+  }, [currentInsightIndex])
 
   return (
     <div className="min-h-screen">

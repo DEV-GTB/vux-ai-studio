@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Landing, Home, Chat, Studio, Image, Settings, Help } from './pages'
+import { Landing, Home, Chat, Studio, Image, Settings, Help, Username } from './pages'
 import './index.css'
 
 function App() {
@@ -15,6 +15,13 @@ function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const handleGetStarted = () => {
+    setCurrentPage('username')
+  }
+
+  const handleUsernameContinue = (value, vibe) => {
+    _setUsername(value)
+    localStorage.setItem('vux_username', value)
+    localStorage.setItem('vux_vibe', vibe)
     setIsAuthenticated(true)
     setCurrentPage('home')
     localStorage.setItem('vux_onboarded', 'true')
@@ -22,6 +29,7 @@ function App() {
 
   const renderPage = () => {
     if (!isAuthenticated) {
+      if (currentPage === 'username') return <Username onContinue={handleUsernameContinue} />
       return <Landing onGetStarted={handleGetStarted} />
     }
 
