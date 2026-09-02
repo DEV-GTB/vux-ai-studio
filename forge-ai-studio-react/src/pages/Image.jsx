@@ -56,6 +56,18 @@ export function Image({ setCurrentPage: _setCurrentPage, username: _username }) 
     'Underwater scene with bioluminescent creatures and coral reefs',
   ]
 
+  const createLocalPreview = () => {
+    const safePrompt = prompt.trim().replace(/[<&>"']/g, (character) => ({
+      '<': '&lt;',
+      '>': '&gt;',
+      '&': '&amp;',
+      '"': '&quot;',
+      "'": '&apos;',
+    })[character])
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#101d3a"/><stop offset="1" stop-color="#06b6d4"/></linearGradient></defs><rect width="1200" height="800" fill="url(#bg)"/><circle cx="950" cy="150" r="180" fill="#4cd7f6" fill-opacity=".22"/><circle cx="180" cy="720" r="260" fill="#8b5cf6" fill-opacity=".24"/><text x="80" y="130" fill="#dae2fd" font-family="sans-serif" font-size="28" letter-spacing="5">VUX LOCAL PREVIEW</text><text x="80" y="390" fill="white" font-family="sans-serif" font-size="48" font-weight="700">${safePrompt.slice(0, 48)}</text><text x="80" y="450" fill="#dae2fd" font-family="sans-serif" font-size="24">No external generation request was sent.</text></svg>`
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+  }
+
   const generateImage = async () => {
     if (!prompt.trim()) return
 
@@ -64,35 +76,14 @@ export function Image({ setCurrentPage: _setCurrentPage, username: _username }) 
     setGeneratedImage(null)
     setErrorMessage('')
 
-    const progressInterval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(progressInterval)
-          return 90
-        }
-        return prev + 10
-      })
-    }, 500)
-
     try {
-      const response = await fetch('/api/image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, aspectRatio, quality, stylePreset }),
-      })
-
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || 'Image generation failed.')
-      }
-
-      clearInterval(progressInterval)
+      const imageData = createLocalPreview()
       setProgress(100)
-      setGeneratedImage(data.image)
+      setGeneratedImage(imageData)
 
       const newImage = {
         id: Date.now(),
-        data: data.image,
+        data: imageData,
         prompt,
         timestamp: new Date().toLocaleString(),
         aspectRatio,
@@ -105,7 +96,6 @@ export function Image({ setCurrentPage: _setCurrentPage, username: _username }) 
       console.error('Error generating image:', error)
       setErrorMessage(error.message || 'Failed to generate image. Please try again.')
     } finally {
-      clearInterval(progressInterval)
       setIsGenerating(false)
       setProgress(0)
     }
@@ -149,7 +139,7 @@ export function Image({ setCurrentPage: _setCurrentPage, username: _username }) 
             <span className="text-xl wave-animation">🎨</span>
           </div>
           <h1 className="text-2xl font-display font-bold text-white">
-            <span className="text-forge-primary neon-text">AI</span> Image Generator
+            Local Image Workspace
           </h1>
         </div>
         <div className="flex items-center gap-2 lg:gap-4">
@@ -275,7 +265,7 @@ export function Image({ setCurrentPage: _setCurrentPage, username: _username }) 
                     </>
                   ) : (
                     <>
-                      <span className="wave-animation">✨</span> Generate Image
+                      <span className="wave-animation">✨</span> Create Local Preview
                     </>
                   )}
                 </button>
@@ -305,7 +295,7 @@ export function Image({ setCurrentPage: _setCurrentPage, username: _username }) 
               </div>
             </div>
 
-            {/* Generated Image Display */}
+            {/* Local preview display */}
             {generatedImage && (
               <div className="bg-forge-surface border border-forge-border rounded-2xl p-6 relative overflow-hidden scale-in">
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -314,7 +304,7 @@ export function Image({ setCurrentPage: _setCurrentPage, username: _username }) 
 
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-display font-semibold">GENERATED IMAGE</h2>
+                    <h2 className="text-lg font-display font-semibold">LOCAL PREVIEW</h2>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => downloadImage(generatedImage)}
@@ -525,8 +515,8 @@ export function Image({ setCurrentPage: _setCurrentPage, username: _username }) 
                   <span className="font-semibold">{imageHistory.length}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-forge-textMuted">Current Model</span>
-                  <span className="font-semibold text-xs">Vux AI Studio Model</span>
+                  <span className="text-sm text-forge-textMuted">Mode</span>
+                  <span className="font-semibold text-xs">Browser-only preview</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-forge-textMuted">Quality</span>
