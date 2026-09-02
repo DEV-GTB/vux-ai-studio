@@ -1,5 +1,4 @@
 import 'dotenv/config';
-import crypto from 'crypto';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -58,30 +57,12 @@ const apiLimiter = rateLimit({
 });
 app.use('/api/', apiLimiter);
 
-// Optional shared access code, recommended once this is public. Disabled
-// until APP_ACCESS_CODE is set in the environment.
-function requireAccessCode(req, res, next) {
-  const configured = process.env.APP_ACCESS_CODE;
-  if (!configured) return next();
-
-  const provided = req.get('x-vux-access-code') || '';
-  const a = Buffer.from(provided);
-  const b = Buffer.from(configured);
-  const valid = a.length === b.length && crypto.timingSafeEqual(a, b);
-
-  if (!valid) return res.status(401).json({ error: 'Invalid or missing access code' });
-  next();
-}
-
-// Safe to expose — tells the frontend whether to show the access-code
-// prompt, without revealing the code itself or anything about the
-// providers behind it.
 app.get('/api/config', (req, res) => {
-  res.json({ requiresAccessCode: Boolean(process.env.APP_ACCESS_CODE) });
+  res.json({ requiresAccessCode: false });
 });
 
-app.use('/api/chat', requireAccessCode, chatRouter);
-app.use('/api/image', requireAccessCode, imageRouter);
+app.use('/api/chat', chatRouter);
+app.use('/api/image', imageRouter);
 
 const reactDist = path.join(__dirname, 'forge-ai-studio-react', 'dist');
 const legacyPublic = path.join(__dirname, 'public');
@@ -103,5 +84,4 @@ const hasAnyAiKey = Boolean(process.env.GEMINI_API_KEY);
 app.listen(PORT, () => {
   console.log(`Vux AI Studio is running at http://localhost:${PORT}`);
   if (!hasAnyAiKey) console.warn('  Warning: no AI key is set — chat will fail.');
-  if (!process.env.APP_ACCESS_CODE) console.warn('  Warning: APP_ACCESS_CODE is not set — the app is open to anyone with the URL.');
 });

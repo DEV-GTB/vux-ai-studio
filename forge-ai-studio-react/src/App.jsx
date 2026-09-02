@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Landing, Home, Chat, Studio, Image, Settings, Help, Username } from './pages'
+import { Landing, Home, Chat, Studio, Image, Settings, Help, Username, Terms } from './pages'
 import './index.css'
 
 function App() {
   const [currentPage, setCurrentPage] = useState(() => {
-    const hasOnboarded = localStorage.getItem('vux_onboarded')
-    return hasOnboarded ? 'home' : 'landing'
+    if (window.location.pathname === '/login') return 'username'
+    if (window.location.pathname === '/terms') return 'terms'
+    return localStorage.getItem('vux_onboarded') ? 'home' : 'landing'
   })
   const [username, _setUsername] = useState(localStorage.getItem('vux_username') || 'Developer')
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -16,6 +17,12 @@ function App() {
 
   const handleGetStarted = () => {
     setCurrentPage('username')
+    window.history.pushState({}, '', '/login')
+  }
+
+  const handleTerms = () => {
+    setCurrentPage('terms')
+    window.history.pushState({}, '', '/terms')
   }
 
   const handleUsernameContinue = (value, vibe) => {
@@ -30,7 +37,8 @@ function App() {
   const renderPage = () => {
     if (!isAuthenticated) {
       if (currentPage === 'username') return <Username onContinue={handleUsernameContinue} />
-      return <Landing onGetStarted={handleGetStarted} />
+      if (currentPage === 'terms') return <Terms onBack={() => { setCurrentPage('landing'); window.history.pushState({}, '', '/') }} />
+      return <Landing onGetStarted={handleGetStarted} onTerms={handleTerms} />
     }
 
     switch(currentPage) {
@@ -44,9 +52,7 @@ function App() {
     }
   }
 
-  if (!isAuthenticated) {
-    return <Landing onGetStarted={handleGetStarted} />
-  }
+  if (!isAuthenticated) return renderPage()
 
   return (
     <div className="flex min-h-screen bg-forge-bg text-forge-text">

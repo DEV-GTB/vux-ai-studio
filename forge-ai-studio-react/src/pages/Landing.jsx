@@ -1,4 +1,4 @@
-export function Landing({ onGetStarted }) {
+export function Landing({ onGetStarted, onTerms }) {
   return (
     <div className="min-h-screen bg-background text-on-background selection:bg-primary/30 overflow-x-hidden" style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* TopNavBar */}
@@ -85,7 +85,7 @@ export function Landing({ onGetStarted }) {
           <div className="text-on-surface-variant">© 2024 Vux AI Studio Inc. All rights reserved.</div>
           <div className="flex gap-md">
             <a className="text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a>
+            <button onClick={onTerms} className="text-on-surface-variant hover:text-primary transition-colors">Terms of Service</button>
             <a className="text-on-surface-variant hover:text-primary transition-colors" href="#">Security</a>
             <a className="text-on-surface-variant hover:text-primary transition-colors" href="#">Status</a>
           </div>

@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import { IDENTITY_PROMPT, scrubIdentity, GENERIC_ERROR } from '../lib/identity.js';
 
 const FORCE_ENGLISH_INSTRUCTIONS = `
@@ -81,19 +80,6 @@ export default async function handler(req, res) {
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'messages array is required' });
-  }
-
-  const requiresAccessCode = Boolean(process.env.APP_ACCESS_CODE);
-  if (requiresAccessCode) {
-    const provided = req.headers['x-vux-access-code'] || '';
-    const configured = process.env.APP_ACCESS_CODE || '';
-    const a = Buffer.from(String(provided));
-    const b = Buffer.from(String(configured));
-    const valid = a.length === b.length && crypto.timingSafeEqual(a, b);
-
-    if (!valid) {
-      return res.status(401).json({ error: 'Invalid or missing access code' });
-    }
   }
 
   if (!process.env.GEMINI_API_KEY) {
