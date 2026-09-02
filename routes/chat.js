@@ -59,10 +59,10 @@ function getIdentityResponse(messages) {
     return 'I am Vux AI Studio, your secure assistant for chat, coding help, and creative work.';
   }
   if (/\b(who (made|created|built|developed) you|who is your founder|who founded you)\b/.test(text)) {
-    return 'Vux AI Studio was developed by the GTB community. The founders are Thariq and Azhar.';
+    return 'Vux AI Studio was developed by Game Theory Building Studio. The owners are Muhammed Thariq P.S and Gokul S Nair.';
   }
   if (/\bwho (are|is) the (co-?founders?|engineering team)\b/.test(text)) {
-    return 'The Co-Founders are Sreehari K.M and Gokul. Engineering is led by Azhar and Thariq.';
+    return 'The AI Engineers are Muhammed Thariq P.S and Gokul S Nair.';
   }
   return null;
 }

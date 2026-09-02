@@ -9,7 +9,7 @@ The app is designed to feel like a clean AI studio experience while keeping the 
 - Chat experience with a Vux-branded interface
 - Private, username-scoped local history
 - English-first responses for non-coding prompts
-- Secure server-side handling for Gemini AI requests
+- Secure server-side handling for AI requests
 - Clean, dark-blue modern UI
 
 ## Local setup
@@ -46,7 +46,7 @@ For public deployment, the recommended setup is:
 
 ## Branding
 
-This project is intentionally branded as Vux AI Studio across the app surface and identity layer.
+This project is developed by Game Theory Building Studio and intentionally branded as Vux AI Studio across the app surface and identity layer.
 
 If you want to adjust the look further, update the UI colors and text in the public interface without exposing any model provider details in the user-facing copy.
 
