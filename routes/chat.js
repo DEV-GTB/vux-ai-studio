@@ -79,22 +79,31 @@ async function callGemini(messages) {
     parts: [{ text: m.content }],
   }));
 
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: `${IDENTITY_PROMPT}\n\n${FORCE_ENGLISH_INSTRUCTIONS}` }] },
-        contents,
-      }),
-    }
-  );
+  const configuredModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const models = configuredModel === 'gemini-2.5-flash' ? [configuredModel] : [configuredModel, 'gemini-2.5-flash'];
+  let data;
+  let response;
 
-  const data = await response.json();
+  for (const model of models) {
+    response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: `${IDENTITY_PROMPT}\n\n${FORCE_ENGLISH_INSTRUCTIONS}` }] },
+          contents,
+        }),
+      }
+    );
+
+    data = await response.json();
+    if (response.ok || response.status !== 404) break;
+    console.warn(`[chat] configured model ${model} was not found; trying fallback`);
+  }
+
   if (!response.ok) {
-    const err = new Error(data.error?.message || 'Gemini request failed');
+    const err = new Error(data.error?.message || 'Chat request failed');
     err.status = response.status;
     err.payload = data;
     throw err;
