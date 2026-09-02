@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import chatRouter from './routes/chat.js';
+import imageRouter from './routes/image.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -61,6 +62,7 @@ app.get('/api/config', (req, res) => {
 });
 
 app.use('/api/chat', chatRouter);
+app.use('/api/image', imageRouter);
 
 const reactDist = path.join(__dirname, 'forge-ai-studio-react', 'dist');
 const legacyPublic = path.join(__dirname, 'public');

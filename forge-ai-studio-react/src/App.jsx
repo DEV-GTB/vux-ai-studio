@@ -76,7 +76,7 @@ function App() {
         {/* Logo */}
         <div className="flex items-center gap-3 p-6 border-b border-forge-border">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-forge-primary to-forge-primaryHover flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-lg">⚡</span>
+            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuALV_T9GseCK2UiieoqsTdT4B_LoAWLwWbgIDHwUmVlWfjZlT0tmTk_KW8WYmXmiWUmZB_57mHYoJLYXgPJYGSqPxHAXZnQ9uYlRvo8lrAhetPrH1LSV7vHNclUKFZ3NCahTLeBPyj_sQQQtm1-foEN-1Y0BvfaZcgXsUGxOuWgpJajnSE6GwKc-EYByMDIqtSqIwZBipW8CgOQnWmJY8tO0250A4XGDAFR8cHvvNzzsYLzJ2IkwHdI8p5jL9A_weVLWw" alt="Vux AI Studio logo" className="h-6 w-6 object-contain" />
           </div>
           {!sidebarCollapsed && (
             <div className="flex flex-col">
