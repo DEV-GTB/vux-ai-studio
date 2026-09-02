@@ -79,8 +79,8 @@ async function callGemini(messages) {
     parts: [{ text: m.content }],
   }));
 
-  const configuredModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-  const models = configuredModel === 'gemini-2.5-flash' ? [configuredModel] : [configuredModel, 'gemini-2.5-flash'];
+  const configuredModel = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+  const models = [...new Set([configuredModel, 'gemini-3.6-flash'])];
   let data;
   let response;
 

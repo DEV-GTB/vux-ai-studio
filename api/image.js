@@ -19,7 +19,7 @@ export default async function handler(req, res) {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY, vertexai: false });
     const result = await ai.models.generateContent({
-      model: process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image-preview',
+      model: process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image',
       contents: [{
         role: 'user',
         parts: [{ text: `${prompt}. Style: ${stylePreset}. Quality: ${quality}. Aspect ratio: ${aspectRatio}. Return one generated image.` }],
