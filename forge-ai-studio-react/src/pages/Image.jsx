@@ -11,6 +11,7 @@ export function Image({ setCurrentPage: _setCurrentPage, username: _username }) 
   const [quality, setQuality] = useState('high')
   const [stylePreset, setStylePreset] = useState('photorealistic')
   const [showSettings, setShowSettings] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
   const fileInputRef = useRef(null)
   const canvasRef = useRef(null)
 
@@ -61,6 +62,7 @@ export function Image({ setCurrentPage: _setCurrentPage, username: _username }) 
     setIsGenerating(true)
     setProgress(0)
     setGeneratedImage(null)
+    setErrorMessage('')
 
     const progressInterval = setInterval(() => {
       setProgress(prev => {
@@ -76,7 +78,7 @@ export function Image({ setCurrentPage: _setCurrentPage, username: _username }) 
       const response = await fetch('/api/image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, aspectRatio, quality, stylePreset }),
       })
 
       const data = await response.json()
@@ -101,7 +103,7 @@ export function Image({ setCurrentPage: _setCurrentPage, username: _username }) 
       setImageHistory(prev => [newImage, ...prev.slice(0, 9)])
     } catch (error) {
       console.error('Error generating image:', error)
-      alert(error.message || 'Failed to generate image. Please try again.')
+      setErrorMessage(error.message || 'Failed to generate image. Please try again.')
     } finally {
       clearInterval(progressInterval)
       setIsGenerating(false)
@@ -277,6 +279,12 @@ export function Image({ setCurrentPage: _setCurrentPage, username: _username }) 
                     </>
                   )}
                 </button>
+
+                {errorMessage && (
+                  <p className="mt-3 rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert">
+                    {errorMessage}
+                  </p>
+                )}
 
                 {/* Progress Bar */}
                 {isGenerating && (

@@ -6,7 +6,7 @@ const router = Router();
 
 // POST /api/image  { prompt: string }
 router.post('/', async (req, res) => {
-  const { prompt } = req.body;
+  const { prompt, aspectRatio = '1:1', quality = 'high', stylePreset = 'photorealistic' } = req.body;
   if (!prompt) return res.status(400).json({ error: 'prompt is required' });
   if (!process.env.GEMINI_API_KEY) {
     console.error('[image] GEMINI_API_KEY is not set on the server');
@@ -19,9 +19,10 @@ router.post('/', async (req, res) => {
       vertexai: false,
     });
 
+    const enhancedPrompt = `${prompt}. Style: ${stylePreset}. Quality: ${quality}. Aspect ratio: ${aspectRatio}. Return one generated image.`;
     const result = await ai.models.generateContent({
       model: process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image-preview',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: [{ role: 'user', parts: [{ text: enhancedPrompt }] }],
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
       },
@@ -48,8 +49,8 @@ router.post('/', async (req, res) => {
 
     res.json({ image: `data:image/png;base64,${imageData}` });
   } catch (err) {
-    console.error('[image] request failed:', err);
-    res.status(502).json({ error: GENERIC_ERROR.image });
+    console.error('[image] request failed:', err?.message || err);
+    res.status(502).json({ error: err?.message || GENERIC_ERROR.image });
   }
 });
 
