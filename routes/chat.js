@@ -273,7 +273,7 @@ async function callMistral(messages) {
   return text;
 }
 
-async function callDeepSeek(messages) {
+async function callDeepSeek(messages, model = process.env.DEEPSEEK_MODEL || 'deepseek-flash') {
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: {
@@ -281,7 +281,7 @@ async function callDeepSeek(messages) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: process.env.DEEPSEEK_MODEL || 'deepseek-flash',
+      model,
       messages,
       thinking: { type: 'enabled' },
       reasoning_effort: 'high',
@@ -357,6 +357,7 @@ async function callGemini(messages) {
 // POST /api/chat  { messages: [{ role: 'user'|'assistant', content: string }] }
 router.post('/', validateBody(chatBodySchema), async (req, res) => {
   const { messages } = req.body;
+  const preferredCodingModel = typeof req.body?.model === 'string' ? req.body.model.trim() : '';
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'messages array is required' });
   }
@@ -489,7 +490,10 @@ router.post('/', validateBody(chatBodySchema), async (req, res) => {
 
   let lastError = null;
   if (!hasImageAttachment && isCoding && hasCloudflare) {
-    for (const model of getCloudflareCodeModels()) {
+    const cloudflareModels = preferredCodingModel && String(preferredCodingModel).startsWith('@cf')
+      ? [String(preferredCodingModel)]
+      : getCloudflareCodeModels();
+    for (const model of cloudflareModels) {
       try {
         const text = await callCloudflare(normalizedMessages, model);
         return sendChatText(res, scrubIdentity(text), `Cloudflare ${model}`, model);
@@ -512,8 +516,8 @@ router.post('/', validateBody(chatBodySchema), async (req, res) => {
 
   if (isCoding && hasDeepSeek) {
     try {
-      const text = await callDeepSeek(normalizedMessages);
-      return sendChatText(res, scrubIdentity(text), 'DeepSeek', process.env.DEEPSEEK_MODEL || 'deepseek-flash', '', newsImages);
+      const text = await callDeepSeek(normalizedMessages, preferredCodingModel || undefined);
+      return sendChatText(res, scrubIdentity(text), 'DeepSeek', preferredCodingModel || process.env.DEEPSEEK_MODEL || 'deepseek-flash', '', newsImages);
     } catch (error) {
       lastError = error;
       console.warn(`[chat] DeepSeek route failed with HTTP ${error?.status || 'provider-error'}; trying the next configured service.`);

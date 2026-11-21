@@ -17,6 +17,15 @@ import {
   supportsFolderAccess,
 } from '../lib/localFiles.js'
 
+// Coding LLM options for the Studio AI assistant. DeepSeek is left as the
+// default; the others are the alternate models the coding pipeline can use.
+const AI_CODING_MODELS = [
+  { value: 'deepseek-flash', label: 'DeepSeek (deepseek-flash)' },
+  { value: '@cf/qwen/qwen3.8-27b', label: 'Cloudflare Qwen (@cf/qwen/qwen3.8-27b)' },
+  { value: '@cf/google/gemma-4-26b-it', label: 'Cloudflare Gemma (@cf/google/gemma-4-26b-it)' },
+  { value: 'gemini-3.6-flash', label: 'Gemini (gemini-3.6-flash)' },
+]
+
 // Custom Monaco theme to match our dark color scheme
 const forgeDarkTheme = {
   base: 'vs-dark',
@@ -290,6 +299,7 @@ function StudioWorkspace({ username }) {
       return 'ask'
     }
   })
+  const [aiModel, setAiModel] = useState('deepseek-flash')
   const aiOperation = parseAiFileAction(aiReply)
   const aiOperationSummary = describeAiAction(aiOperation)
   const displayedAiReply = aiOperation?.action === 'answer' ? aiOperation.message : aiReply
@@ -1249,7 +1259,7 @@ function StudioWorkspace({ username }) {
       const response = await fetch(apiUrl('/api/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [
+        body: JSON.stringify({ model: aiModel, messages: [
           { role: 'user', content: `You are assisting with the local workspace in VUX AI. Active file: ${activeTab || 'none'}. Existing files: ${fileNames.slice(0, 200).join(', ')}. Existing folders: ${sortedWorkspaceFolders.slice(0, 100).join(', ')}. Current file content:\n\n${draft}\n\nUser request: ${aiPrompt}\n\nReturn exactly one JSON object with one of these actions: {"action":"edit","filename":"existing relative file path","content":"complete updated file"}; {"action":"create","filename":"new relative file path","content":"complete file content"}; {"action":"delete","filename":"existing relative file path","reason":"brief reason"}; {"action":"rename","filename":"existing relative file path","newFilename":"new relative file path"}; {"action":"create_folder","path":"new relative folder path"}; {"action":"delete_folder","path":"existing relative folder path","recursive":true,"reason":"brief reason"}; {"action":"command","command":"one command"}; or {"action":"answer","message":"explanation only"}. Only return command when the user explicitly requests command execution. Use edit for existing files, create only when requested, and delete only when explicitly requested. Never include markdown fences. Do not claim a file changed or command ran before Studio approves it.` },
         ] }),
       })
@@ -2524,6 +2534,15 @@ function StudioWorkspace({ username }) {
             
             {!aiPlanMode && (
               <form onSubmit={askAi} className="p-3 border-t border-forge-border space-y-2">
+                <select
+                  value={aiModel}
+                  onChange={(event) => setAiModel(event.target.value)}
+                  className="w-full rounded-lg border border-forge-border bg-forge-surfaceLow px-3 py-2 text-sm focus:outline-none focus:border-forge-primary"
+                >
+                  {AI_CODING_MODELS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
                 <textarea
                   value={aiPrompt}
                   onChange={(event) => setAiPrompt(event.target.value)}
