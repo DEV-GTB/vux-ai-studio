@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getWeatherData } from '../lib/liveContext.js';
+import { validateQuery, locationQuerySchema } from '../lib/requestValidation.js';
 
 const router = Router();
 
@@ -9,7 +10,7 @@ const router = Router();
 // /api rate limiter is skipped for this route on purpose - weather is a free
 // live source and must stay available for the daily quotas.
 
-router.get('/', async (req, res) => {
+router.get('/', validateQuery(locationQuerySchema), async (req, res) => {
   try {
     const location = String(req.query.location || req.query.q || 'global').trim();
     const data = await getWeatherData(location, { cacheTtlMs: 10 * 60 * 1000 });

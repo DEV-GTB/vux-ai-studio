@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { GENERIC_ERROR, IDENTITY_PROMPT, scrubIdentity } from '../lib/identity.js';
+import { validateBody, visionBodySchema } from '../lib/requestValidation.js';
 
 const router = Router();
 const HF_CHAT_ENDPOINT = 'https://router.huggingface.co/v1/chat/completions';
@@ -15,7 +16,7 @@ function isAllowedImageUrl(value) {
   }
 }
 
-router.post('/', async (req, res) => {
+router.post('/', validateBody(visionBodySchema), async (req, res) => {
   const { imageUrl, message } = req.body || {};
   if (typeof imageUrl !== 'string' || !imageUrl.trim() || imageUrl.length > 4096 || !isAllowedImageUrl(imageUrl)) {
     return res.status(400).json({ error: 'A valid HTTPS image URL is required.' });

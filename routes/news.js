@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getNewsArticles } from '../lib/liveContext.js';
+import { validateQuery, topicQuerySchema } from '../lib/requestValidation.js';
 
 const router = Router();
 
@@ -10,7 +11,7 @@ const router = Router();
 // digest does not burn the free budget. The generic /api rate limiter is
 // skipped for this route on purpose - news is a free live source.
 
-router.get('/', async (req, res) => {
+router.get('/', validateQuery(topicQuerySchema), async (req, res) => {
   try {
     const topic = String(req.query.topic || req.query.q || 'latest news').trim();
     const articles = await getNewsArticles(topic, { cacheTtlMs: 30 * 60 * 1000 });

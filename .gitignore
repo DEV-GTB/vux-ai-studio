@@ -6,6 +6,7 @@ MODELS.md
 # Local environment files hold private keys.
 .env
 .env.*
+!.env.example
 
 # Dependencies and build output.
 node_modules/

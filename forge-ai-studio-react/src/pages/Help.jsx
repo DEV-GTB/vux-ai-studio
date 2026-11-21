@@ -1,8 +1,12 @@
 import { useState } from 'react'
 
+const SUPPORT_GMAIL = 'gtbstudio369@gmail.com'
+
 export function Help({ setCurrentPage: _setCurrentPage, username }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
+  const [feedbackType, setFeedbackType] = useState(null) // 'suggestion' | 'bug'
+  const [feedbackText, setFeedbackText] = useState('')
 
   const categories = [
     { id: 'all', name: 'All Topics', icon: '📚' },
@@ -67,6 +71,20 @@ export function Help({ setCurrentPage: _setCurrentPage, username }) {
   const filteredArticles = selectedCategory === 'all' 
     ? helpArticles.filter(a => a.title.toLowerCase().includes(searchQuery.toLowerCase()))
     : helpArticles.filter(a => a.category === selectedCategory && a.title.toLowerCase().includes(searchQuery.toLowerCase()))
+
+  const submitFeedback = () => {
+    if (!feedbackText.trim()) return
+    const isBug = feedbackType === 'bug'
+    const category = isBug ? 'Bug' : 'Suggestion'
+    const subject = `[${isBug ? 'Bug Report' : 'Suggestion'}] ${category} from ${username}`
+    const body = [
+      `Account Name: ${username}`,
+      `Report Category: ${category}`,
+      '',
+      feedbackText.trim(),
+    ].join('\n')
+    window.location.href = `mailto:${SUPPORT_GMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -219,6 +237,55 @@ export function Help({ setCurrentPage: _setCurrentPage, username }) {
               )}
             </div>
           </div>
+
+          {/* Feedback / Bug Report: sends by email to the support Gmail. No backend or database needed. */}
+          <div className="mt-10 border-t border-forge-border pt-8">
+            <h2 className="text-xl font-display font-semibold mb-2">Send Feedback or Report a Bug</h2>
+            <p className="text-sm text-forge-textMuted mb-4">
+              Tell us what is wrong or what should improve. Submitting opens your email app addressed to{' '}
+              <span className="text-forge-primary font-medium">{SUPPORT_GMAIL}</span> with your account name and
+              report category included.
+            </p>
+            <div className="flex gap-3 mb-4">
+              <button
+                type="button"
+                onClick={() => { setFeedbackType('suggestion'); setFeedbackText(''); }}
+                className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                  feedbackType === 'suggestion'
+                    ? 'bg-forge-primaryLight border-forge-primary text-forge-primary'
+                    : 'bg-forge-surface border-forge-border text-forge-textMuted hover:bg-forge-surfaceLow'
+                }`}
+              >
+                💡 Suggestion
+              </button>
+              <button
+                type="button"
+                onClick={() => { setFeedbackType('bug'); setFeedbackText(''); }}
+                className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                  feedbackType === 'bug'
+                    ? 'bg-forge-primaryLight border-forge-primary text-forge-primary'
+                    : 'bg-forge-surface border-forge-border text-forge-textMuted hover:bg-forge-surfaceLow'
+                }`}
+              >
+                🐛 Bug Report
+              </button>
+            </div>
+            <textarea
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              placeholder={feedbackType === 'bug' ? 'Describe the bug and what happened...' : 'Describe your suggestion...'}
+              rows={4}
+              className="w-full bg-forge-surface border border-forge-border rounded-xl px-4 py-3 text-sm mb-3 focus:outline-none focus:border-forge-primary transition-all"
+            />
+            <button
+              type="button"
+              onClick={submitFeedback}
+              disabled={!feedbackText.trim()}
+              className="w-full px-4 py-3 bg-forge-primary text-black font-medium rounded-lg hover:bg-forge-primaryHover transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {feedbackType === 'bug' ? '📩 Send Bug Report' : '📩 Send Suggestion'}
+            </button>
+          </div>
         </main>
 
         {/* Quick Links Sidebar - Desktop */}
@@ -238,7 +305,10 @@ export function Help({ setCurrentPage: _setCurrentPage, username }) {
                 <span>💬</span>
                 <span className="text-sm">Community</span>
               </button>
-              <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-forge-surfaceLow transition-all text-left">
+              <button
+                onClick={() => { setFeedbackType('bug'); setFeedbackText(''); }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-forge-surfaceLow transition-all text-left"
+              >
                 <span>🐛</span>
                 <span className="text-sm">Report Bug</span>
               </button>
@@ -250,7 +320,10 @@ export function Help({ setCurrentPage: _setCurrentPage, username }) {
             <p className="text-sm text-forge-textMuted mb-4">
               Our support team is available 24/7 to assist you.
             </p>
-            <button className="w-full px-4 py-2 bg-forge-primary text-black font-medium rounded-lg hover:bg-forge-primaryHover transition-all text-sm">
+            <button
+              onClick={() => { setFeedbackType('suggestion'); setFeedbackText(''); }}
+              className="w-full px-4 py-2 bg-forge-primary text-black font-medium rounded-lg hover:bg-forge-primaryHover transition-all text-sm"
+            >
               Contact Support
             </button>
           </div>

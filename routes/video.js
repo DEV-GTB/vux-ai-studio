@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { GoogleGenAI } from '@google/genai';
-import { GENERIC_ERROR } from '../lib/identity.js';
+import { GENERIC_ERROR } from '../lib/identity.js';
+import { validateBody, promptBodySchema } from '../lib/requestValidation.js';
 import { getCloudflareAccounts, getModelList, runCloudflareModel, splitModelList, extractImagePayload, extractAudioPayload, extractVideoPayload, extractTranscription, extractGeneratedText, extractEmbeddings, extractMediaPayload } from '../lib/cloudflare.js';
 import { generate, CAPABILITY } from '../lib/aiProviders.js';
 
@@ -86,7 +87,7 @@ async function extractVideoPart(videoBase64) {
 }
 
 // POST /api/video  { prompt, duration }
-router.post('/', async (req, res) => {
+router.post('/', validateBody(promptBodySchema), async (req, res) => {
   const { prompt, duration } = req.body || {};
   if (!prompt) {
     return res.status(400).json({ error: 'prompt is required' });

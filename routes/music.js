@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { GENERIC_ERROR } from '../lib/identity.js';
+import { validateBody, promptBodySchema } from '../lib/requestValidation.js';
 import { getCloudflareAccounts, getModelList, runCloudflareModel, extractImagePayload, extractAudioPayload, extractVideoPayload, extractTranscription, extractGeneratedText, extractEmbeddings, extractMediaPayload } from '../lib/cloudflare.js';
 import { generate, CAPABILITY } from '../lib/aiProviders.js';
 
@@ -52,7 +53,7 @@ function sendMusicError(res, error) {
 }
 
 // POST /api/music  { prompt, musicLengthMs, forceInstrumental, outputFormat, isInstrumental, lyricsOptimizer }
-router.post('/', async (req, res) => {
+router.post('/', validateBody(promptBodySchema), async (req, res) => {
   const {
     prompt,
     musicLengthMs,

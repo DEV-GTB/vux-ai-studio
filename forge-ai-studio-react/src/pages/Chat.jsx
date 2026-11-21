@@ -257,6 +257,26 @@ export function Chat({ setCurrentPage: _setCurrentPage, username }) {
     stickToBottomRef.current = true
 
     try {
+      // Chat commands: /dailynews [topic] pulls the latest headlines from the
+      // free news providers and answers right inside the thread.
+      const newsCommand = userText.match(/^\/dailynews(?:\s+(.*))?$/i) || userText.match(/^\/news(?:\s+(.*))?$/i);
+      if (newsCommand) {
+        const topic = (newsCommand[1] || '').trim() || 'latest news';
+        const newsResponse = await fetch(apiUrl(`/api/news?topic=${encodeURIComponent(topic)}`));
+        const newsData = await newsResponse.json().catch(() => ({}));
+        const headlines = Array.isArray(newsData.news) ? newsData.news : [];
+        const reply = headlines.length
+          ? `Here are the latest headlines for ${topic}:\n\n${headlines.map((headline, index) => `${index + 1}. ${headline.title} — ${headline.source}\n${headline.url}`).join('\n\n')}`
+          : 'Sorry, I could not fetch the latest news right now. Please try again in a moment.';
+        setMessages((prev) => [...prev, { role: 'user', content: userText }, { role: 'assistant', content: reply }]);
+        setInput('');
+        setIsTyping(false);
+        setIsStreaming(true);
+        await streamReply(reply);
+        loadMemories();
+        return;
+      }
+
       const imageParts = await Promise.all(attachedFileList
         .filter((file) => file.type.startsWith('image/'))
         .map((file) => new Promise((resolve, reject) => {
@@ -289,7 +309,18 @@ export function Chat({ setCurrentPage: _setCurrentPage, username }) {
 
       setIsTyping(false)
       setIsStreaming(true)
-      if (data.image) {
+      const remoteImages = Array.isArray(data.images) ? data.images : [];
+      const assistantContent = [
+        { type: 'text', text: replyText },
+        ...remoteImages.map((image) => ({ type: 'image_url', image_url: { url: image.url } })),
+      ];
+      if (remoteImages.length) {
+        // Answers that carry text plus internet images (news, links, online
+        // sources) show those online images next to the text instead of
+        // triggering a fresh image generation.
+        setMessages((prev) => [...prev, { role: 'assistant', content: assistantContent }]);
+        setIsStreaming(false);
+      } else if (data.image) {
         // The chat image tool answered with a generated / edited image.
         setMessages((prev) => [...prev, {
           role: 'assistant',

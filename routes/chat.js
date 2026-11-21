@@ -8,8 +8,9 @@ import { INDIA_KNOWLEDGE_PROMPT } from '../lib/knowledge.js';
 import { searchKnowledge } from '../lib/knowledgeStore.js';
 import { buildMemoryContext } from '../lib/memory.js';
 import { STUDIO_TOOL_GUIDANCE } from '../lib/promptBuilder.js';
-import { buildLiveContext } from '../lib/liveContext.js';
+import { buildLiveContext, getNewsArticles } from '../lib/liveContext.js';
 import { looksLikeSearchRequest, webSearch } from '../lib/webSearch.js';
+import { validateBody, chatBodySchema } from '../lib/requestValidation.js';
 
 const router = Router();
 
@@ -96,10 +97,10 @@ async function generateImageForChat(prompt, imageUrl) {
   return `data:${result.contentType || 'image/png'};base64,${result.buffer.toString('base64')}`;
 }
 
-function sendChatText(res, text, provider, model, image) {
+function sendChatText(res, text, provider, model, image, images = []) {
   res.setHeader('X-Vux-AI-Provider', provider || 'unknown');
   res.setHeader('X-Vux-AI-Model', model || provider || 'unknown');
-  return res.json({ text, ...(image ? { image } : {}) });
+  return res.json({ text, ...(image ? { image } : {}), ...(Array.isArray(images) && images.length ? { images } : {}) });
 }
 
 function getTextContent(content) {
@@ -303,7 +304,7 @@ async function callDeepSeek(messages) {
 }
 
 async function callGemini(messages) {
-  const configuredModel = process.env.GEMINI_MODEL || 'gemma-4-31b-it';
+  const configuredModel = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
   const models = [...new Set([configuredModel, 'gemini-3.6-flash'])];
   let data = {};
   let response;
@@ -354,7 +355,7 @@ async function callGemini(messages) {
 }
 
 // POST /api/chat  { messages: [{ role: 'user'|'assistant', content: string }] }
-router.post('/', async (req, res) => {
+router.post('/', validateBody(chatBodySchema), async (req, res) => {
   const { messages } = req.body;
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'messages array is required' });
@@ -422,6 +423,21 @@ router.post('/', async (req, res) => {
   const normalizedMessages = buildMessages(messages, extraKnowledge, memoryContext, contextBlock);
   const isCoding = isCodingEarly;
 
+  // Answers that ran on top of live news context come back with the article
+  // images attached, so the reader sees text plus the online images it talks
+  // about instead of a freshly generated picture.
+  let newsImages = [];
+  if (contextBlock.includes('LIVE NEWS CONTEXT')) {
+    try {
+      const articles = await getNewsArticles(latestUserText);
+      newsImages = (Array.isArray(articles) ? articles : [])
+        .map((article) => ({ url: String(article?.image || '') }))
+        .filter((article) => article.url);
+    } catch {
+      newsImages = [];
+    }
+  }
+
   const hasImageAttachment = normalizedMessages.some((message) => Array.isArray(message.content)
     && message.content.some((part) => part?.type === 'image_url'));
   const hasGroq = Boolean(process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'your_groq_api_key_here');
@@ -487,7 +503,7 @@ router.post('/', async (req, res) => {
   if (!hasImageAttachment && hasGroq) {
     try {
       const text = await callGroq(normalizedMessages);
-      return sendChatText(res, scrubIdentity(text), 'Groq', getGroqChatModel());
+      return sendChatText(res, scrubIdentity(text), 'Groq', getGroqChatModel(), '', newsImages);
     } catch (error) {
       lastError = error;
       console.warn('[chat] Groq route failed; trying the next configured service:', error?.status || error?.message);
@@ -497,7 +513,7 @@ router.post('/', async (req, res) => {
   if (isCoding && hasDeepSeek) {
     try {
       const text = await callDeepSeek(normalizedMessages);
-      return sendChatText(res, scrubIdentity(text), 'DeepSeek', process.env.DEEPSEEK_MODEL || 'deepseek-flash');
+      return sendChatText(res, scrubIdentity(text), 'DeepSeek', process.env.DEEPSEEK_MODEL || 'deepseek-flash', '', newsImages);
     } catch (error) {
       lastError = error;
       console.warn(`[chat] DeepSeek route failed with HTTP ${error?.status || 'provider-error'}; trying the next configured service.`);
@@ -507,7 +523,7 @@ router.post('/', async (req, res) => {
   if (!isCoding && hasGemini) {
     try {
       const text = await callGemini(normalizedMessages);
-      return sendChatText(res, scrubIdentity(text), 'Gemini', process.env.GEMINI_MODEL || 'gemma-4-31b-it');
+      return sendChatText(res, scrubIdentity(text), 'Gemini', process.env.GEMINI_MODEL || 'gemini-3.6-flash', '', newsImages);
     } catch (error) {
       lastError = error;
       console.warn('[chat] Gemini route failed; trying the next configured service:', error?.status || 'provider-error');
@@ -518,7 +534,7 @@ router.post('/', async (req, res) => {
   if (hasMistral) {
     try {
       const text = await callMistral(normalizedMessages);
-      return sendChatText(res, scrubIdentity(text), 'Mistral', process.env.MISTRAL_MODEL || 'mistral-small-latest');
+      return sendChatText(res, scrubIdentity(text), 'Mistral', process.env.MISTRAL_MODEL || 'mistral-small-latest', '', newsImages);
     } catch (error) {
       lastError = error;
       console.warn('[chat] Mistral route failed:', error?.status || error?.message);
@@ -529,7 +545,7 @@ router.post('/', async (req, res) => {
     for (const model of huggingFaceModels) {
       try {
         const text = await callHuggingFace([systemMessage, ...userMessages], model);
-        return sendChatText(res, scrubIdentity(text), 'Hugging Face', model);
+        return sendChatText(res, scrubIdentity(text), 'Hugging Face', model, '', newsImages);
       } catch (error) {
         lastError = error;
         console.warn('[chat] Hugging Face route failed; trying the next configured service.');
@@ -540,7 +556,7 @@ router.post('/', async (req, res) => {
   if (!hasImageAttachment && !isCoding && hasCloudflare) {
     try {
       const text = await callCloudflare(normalizedMessages);
-      return sendChatText(res, scrubIdentity(text), 'Cloudflare', process.env.CLOUDFLARE_CHAT_MODEL || '@cf/moonshotai/kimi-k2.7-code');
+      return sendChatText(res, scrubIdentity(text), 'Cloudflare', process.env.CLOUDFLARE_CHAT_MODEL || '@cf/moonshotai/kimi-k2.7-code', '', newsImages);
     } catch (error) {
       lastError = error;
       console.warn('[chat] Cloudflare Workers AI fallback failed.');
@@ -550,7 +566,7 @@ router.post('/', async (req, res) => {
   if (isCoding && hasGemini) {
     try {
       const text = await callGemini(normalizedMessages);
-      return sendChatText(res, scrubIdentity(text), 'Gemini', process.env.GEMINI_MODEL || 'gemma-4-31b-it');
+      return sendChatText(res, scrubIdentity(text), 'Gemini', process.env.GEMINI_MODEL || 'gemini-3.6-flash', '', newsImages);
     } catch (error) {
       lastError = error;
       console.error('[chat] configured fallback failed:', error?.status || error?.message || 'unknown error');
@@ -560,7 +576,7 @@ router.post('/', async (req, res) => {
   if (!isCoding && hasDeepSeek) {
     try {
       const text = await callDeepSeek(normalizedMessages);
-      return sendChatText(res, scrubIdentity(text), 'DeepSeek', process.env.DEEPSEEK_MODEL || 'deepseek-flash');
+      return sendChatText(res, scrubIdentity(text), 'DeepSeek', process.env.DEEPSEEK_MODEL || 'deepseek-flash', '', newsImages);
     } catch (error) {
       lastError = error;
       console.error('[chat] DeepSeek fallback failed:', error?.status || error?.message || 'unknown error');

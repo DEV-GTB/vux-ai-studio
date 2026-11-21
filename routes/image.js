@@ -4,6 +4,7 @@ import { generate, CAPABILITY } from '../lib/aiProviders.js';
 import Cloudflare from 'cloudflare';
 import { InferenceClient } from '@huggingface/inference';
 import { GENERIC_ERROR } from '../lib/identity.js';
+import { validateBody, promptBodySchema } from '../lib/requestValidation.js';
 
 const router = Router();
 
@@ -115,7 +116,7 @@ async function generateGeminiImage(prompt) {
   return { buffer: Buffer.from(imagePart.inlineData.data, 'base64'), mimeType };
 }
 
-router.post('/', async (req, res) => {
+router.post('/', validateBody(promptBodySchema), async (req, res) => {
   const { prompt, stylePreset = 'photorealistic', aspectRatio = '1:1', quality = 'high', referenceImage, instruction, target, enhanceDetails } = req.body || {};
   if (typeof prompt !== 'string' || !prompt.trim()) {
     return res.status(400).json({ error: 'A prompt is required.' });

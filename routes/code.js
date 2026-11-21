@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { runCodeRequest } from '../lib/studioAgent.js';
 import { analyzeRequest } from '../lib/codeIntent.js';
 import { GENERIC_ERROR } from '../lib/identity.js';
+import { validateBody, codeBodySchema } from '../lib/requestValidation.js';
 
 const router = Router();
 
@@ -51,7 +52,7 @@ function sanitizeFolders(value) {
 // `action` is one of the studio actions: edit, create, delete, create_folder,
 // delete_folder, answer. The client is responsible for asking the user to
 // approve before it touches the filesystem.
-router.post('/', async (req, res) => {
+router.post('/', validateBody(codeBodySchema), async (req, res) => {
   const body = req.body || {};
   const request = typeof body.request === 'string' ? body.request.trim() : '';
 
@@ -92,7 +93,7 @@ router.post('/', async (req, res) => {
 // -> the detected intent, languages and context selection, with no model call.
 //
 // Useful for the UI (showing what the assistant understood) and for evals.
-router.post('/analyze', (req, res) => {
+router.post('/analyze', validateBody(codeBodySchema), (req, res) => {
   const body = req.body || {};
   const request = typeof body.request === 'string' ? body.request.trim() : '';
   if (!request) return res.status(400).json({ error: 'A request is required.' });

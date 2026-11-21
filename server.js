@@ -6,6 +6,8 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import compression from 'compression';
+import client from 'prom-client';
 import chatRouter from './routes/chat.js';
 import codeRouter from './routes/code.js';
 import visionRouter from './routes/vision.js';
@@ -61,6 +63,21 @@ if (process.env.ALLOWED_ORIGIN) {
   app.use(cors({ origin: allowedOrigins }));
 }
 
+// Compress responses (JSON, static assets) to reduce bandwidth and latency.
+app.use(compression());
+
+// Bound request lifetime so a hung provider or slow client cannot pin a connection.
+const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 120000;
+app.use((req, res, next) => {
+  req.setTimeout(REQUEST_TIMEOUT_MS);
+  res.setTimeout(REQUEST_TIMEOUT_MS, () => {
+    if (!res.headersSent) {
+      res.status(408).json({ error: 'Request timed out.' });
+    }
+  });
+  next();
+});
+
 app.use(express.json({ limit: '20mb' }));
 
 // Rate limit every /api/* route per IP. Free-tier Gemini quotas are small
@@ -97,6 +114,64 @@ app.use('/api/device/state', rateLimit({
   legacyHeaders: false,
   message: { error: 'Device dashboard refresh limit reached. Please wait a moment.' },
 }));
+
+// Prometheus metrics: default process metrics plus per-route request counters.
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
+
+const httpRequestsTotal = new client.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'status_code'],
+  registers: [register],
+});
+const httpRequestDurationSeconds = new client.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'HTTP request duration in seconds',
+  labelNames: ['method', 'route', 'status_code'],
+  buckets: [0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60],
+  registers: [register],
+});
+
+app.use((req, res, next) => {
+  const end = httpRequestDurationSeconds.startTimer();
+  res.on('finish', () => {
+    const route = req.route?.path || req.path || 'unknown';
+    const labels = { method: req.method, route, status_code: res.statusCode };
+    httpRequestsTotal.inc(labels);
+    end(labels);
+  });
+  next();
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    uptimeSeconds: Math.round(process.uptime()),
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    providers: {
+      gemini: Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here'),
+      huggingface: Boolean(process.env.HF_TOKEN && process.env.HF_TOKEN !== 'your_huggingface_api_key_here'),
+      groq: Boolean(process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'your_groq_api_key_here'),
+      cloudflare: Boolean(process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_API_TOKEN !== 'your_cloudflare_api_token_here' && process.env.CLOUDFLARE_ACCOUNT_ID),
+      deepseek: Boolean(process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY !== 'your_deepseek_api_key_here'),
+    },
+  });
+});
+
+app.get('/api/ready', (req, res) => {
+  res.json({ ready: true, timestamp: new Date().toISOString() });
+});
+
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (error) {
+    res.status(500).end(error?.message || 'metrics error');
+  }
+});
 
 app.get('/api/config', (req, res) => {
   res.json({ requiresAccessCode: false });
