@@ -142,7 +142,7 @@ function describe(result) {
 const PROBES = {
   text: [
     { model: '@cf/qwen/qwen3.8-27b', body: { messages: [{ role: 'user', content: 'Say hi in three words.' }] } },
-    { model: '@cf/google/gemma-4-26b-a4b-it', body: { messages: [{ role: 'user', content: 'Say hi in three words.' }] } },
+    { model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', body: { messages: [{ role: 'user', content: 'Say hi in three words.' }] } },
     { model: '@cf/qwen/qwen2.5-coder-32b-instruct', body: { messages: [{ role: 'user', content: 'Say hi.' }] } },
     { model: 'fireworks/ember-1', body: { messages: [{ role: 'user', content: 'Say hi.' }], max_tokens: 64 } },
     { model: 'google/gemini-4-argon', body: { contents: [{ role: 'user', parts: [{ text: 'Say hi.' }] }] } },

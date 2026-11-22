@@ -33,7 +33,7 @@ async function probeGemini(model) {
   return output;
 }
 
-const models = ['gemma-4-31b-it', 'gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-3.8-flash'];
+const models = ['gemini-3.8-flash', 'gemini-3.6-flash'];
 for (const model of models) {
   console.log(`\n--- probing Gemini model: ${model} ---`);
   try {

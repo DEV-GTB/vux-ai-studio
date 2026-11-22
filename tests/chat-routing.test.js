@@ -52,7 +52,7 @@ afterEach(() => {
 beforeEach(() => {
   process.env.HF_TOKEN = 'test-huggingface-token';
   process.env.GEMINI_API_KEY = '';
-  process.env.GEMINI_MODEL = 'gemma-4-31b-it';
+  process.env.GEMINI_MODEL = 'gemini-3.8-flash';
   process.env.DEEPSEEK_API_KEY = '';
   process.env.DEEPSEEK_MODEL = 'deepseek-flash';
   process.env.GROQ_API_KEY = '';
@@ -60,9 +60,9 @@ beforeEach(() => {
   process.env.CLOUDFLARE_API_TOKEN = '';
   process.env.CLOUDFLARE_ACCOUNT_ID = '';
   process.env.CLOUDFLARE_CHAT_MODEL = '@cf/moonshotai/kimi-k2.7-code';
-  process.env.CLOUDFLARE_CODE_MODELS = '@cf/qwen/qwen3.8-27b,@cf/google/gemma-4-26b-a4b-it,@cf/qwen/qwq-32b';
+  process.env.CLOUDFLARE_CODE_MODELS = '@cf/qwen/qwen3.8-27b,@cf/meta/llama-3.3-70b-instruct-fp8-fast,@cf/qwen/qwq-32b';
   process.env.CLOUDFLARE_IMAGE_MODEL = '@cf/black-forest-labs/flux-1-schnell';
-  process.env.HF_CHAT_MODEL = 'google/gemma-test';
+  process.env.HF_CHAT_MODEL = 'Qwen/Qwen3-235B-A22B-Instruct-2507';
   process.env.HF_DEEPSEEK_MODEL = 'deepseek-ai/deepseek-test';
   delete process.env.HF_VISION_MODEL;
   delete process.env.HF_VISION_FALLBACK_MODEL;
@@ -97,7 +97,7 @@ test('ordinary chat prefers the configured Hugging Face chat route', async () =>
   const response = await ask([{ role: 'user', content: 'Why does the moon have phases?' }]);
   assert.equal(response.status, 200);
   assert.equal((await response.json()).text, 'A concise answer.');
-  assert.equal(requestedModel, 'google/gemma-4-12B-it');
+  assert.equal(requestedModel, 'Qwen/Qwen3-235B-A22B-Instruct-2507');
   assert.match(systemPrompt, /VUX AI/);
 });
 
@@ -142,7 +142,7 @@ test('coding chat prefers Cloudflare Workers AI when configured', async () => {
 test('coding chat tries the next configured Cloudflare model when the first is unavailable', async () => {
   process.env.CLOUDFLARE_API_TOKEN = 'test-cloudflare-token';
   process.env.CLOUDFLARE_ACCOUNT_ID = 'test-account-id';
-  process.env.CLOUDFLARE_CODE_MODELS = '@cf/qwen/qwen3.8-27b,@cf/google/gemma-4-26b-a4b-it';
+  process.env.CLOUDFLARE_CODE_MODELS = '@cf/qwen/qwen3.8-27b,@cf/meta/llama-3.3-70b-instruct-fp8-fast';
   const requestedUrls = [];
   globalThis.fetch = async (url) => {
     const requestedUrl = decodeURIComponent(String(url));
@@ -150,14 +150,14 @@ test('coding chat tries the next configured Cloudflare model when the first is u
     if (requestedUrl.includes('@cf/qwen/qwen3.8-27b')) {
       return jsonResponse({ errors: [{ message: 'Model unavailable.' }] }, 404);
     }
-    return jsonResponse({ result: { response: 'Gemma coding answer.' } });
+    return jsonResponse({ result: { response: 'Here is the fix.' } });
   };
 
   const response = await ask([{ role: 'user', content: 'Debug this JavaScript function.' }]);
   assert.equal(response.status, 200);
-  assert.equal((await response.json()).text, 'Gemma coding answer.');
+  assert.equal((await response.json()).text, 'Here is the fix.');
   assert.ok(requestedUrls[0].includes('@cf/qwen/qwen3.8-27b'));
-  assert.ok(requestedUrls[1].includes('@cf/google/gemma-4-26b-a4b-it'));
+  assert.ok(requestedUrls[1].includes('@cf/meta/llama-3.3-70b-instruct-fp8-fast'));
 });
 
 test('image generation uses Cloudflare FLUX and returns decoded image bytes', async () => {
@@ -237,30 +237,30 @@ test('coding requests prefer the configured DeepSeek API key', async () => {
   assert.equal(requestBody.reasoning_effort, 'high');
 });
 
-test('Gemma is used for ordinary chat without a systemInstruction field', async () => {
+test('Gemini is used for ordinary chat with a systemInstruction field', async () => {
   process.env.GEMINI_API_KEY = 'test-gemini-key';
   let requestedUrl = '';
   let requestBody;
   globalThis.fetch = async (url, options) => {
     requestedUrl = String(url);
     requestBody = JSON.parse(options.body);
-    return jsonResponse({ candidates: [{ content: { parts: [{ text: 'Gemma answer.' }] } }] });
+    return jsonResponse({ candidates: [{ content: { parts: [{ text: 'Here is the answer.' }] } }] });
   };
 
   const response = await ask([{ role: 'user', content: 'What is a closure?' }]);
   assert.equal(response.status, 200);
-  assert.equal((await response.json()).text, 'Gemma answer.');
-  assert.match(requestedUrl, /models\/gemma-4-31b-it:/);
-  assert.equal(requestBody.systemInstruction, undefined);
-  assert.match(requestBody.contents[0].parts[0].text, /VUX AI/);
+  assert.equal((await response.json()).text, 'Here is the answer.');
+  assert.match(requestedUrl, /models\/gemini-3.8-flash:/);
+  assert.ok(requestBody.systemInstruction);
+  assert.match(requestBody.systemInstruction.parts[0].text, /VUX AI/);
 });
 
-test('Gemini retries with its fallback model after a transient Gemma error', async () => {
+test('Gemini retries with its fallback model after a transient error', async () => {
   process.env.GEMINI_API_KEY = 'test-gemini-key';
   const requestedUrls = [];
   globalThis.fetch = async (url) => {
     requestedUrls.push(String(url));
-    if (String(url).includes('/gemma-4-31b-it:')) return jsonResponse({ error: { message: 'temporarily unavailable' } }, 503);
+    if (String(url).includes('/gemini-3.8-flash:')) return jsonResponse({ error: { message: 'temporarily unavailable' } }, 503);
     return jsonResponse({ candidates: [{ content: { parts: [{ text: 'Fallback answer.' }] } }] });
   };
 
@@ -268,7 +268,7 @@ test('Gemini retries with its fallback model after a transient Gemma error', asy
   assert.equal(response.status, 200);
   assert.equal((await response.json()).text, 'Fallback answer.');
   const geminiUrls = requestedUrls.filter((url) => url.includes('generativelanguage'));
-  assert.match(geminiUrls[0], /models\/gemma-4-31b-it:/);
+  assert.match(geminiUrls[0], /models\/gemini-3.8-flash:/);
   assert.match(geminiUrls[1], /models\/gemini-3.6-flash:/);
 });
 
@@ -326,7 +326,7 @@ test('vision requests include shared identity instructions and the image URL', a
   assert.deepEqual(await response.json(), { reply: 'A red bicycle.' });
   assert.match(submitted.messages[0].content, /VUX AI/);
   assert.equal(submitted.messages[1].content[1].image_url.url, 'https://images.example.test/bicycle.jpg');
-  assert.equal(submitted.model, 'google/gemma-4-12B-it');
+  assert.equal(submitted.model, 'Qwen/Qwen2.5-VL-7B-Instruct');
 });
 
 test('vision rejects non-HTTPS image URLs without making an upstream call', async () => {
@@ -347,13 +347,13 @@ test('vision rejects non-HTTPS image URLs without making an upstream call', asyn
 });
 
 test('vision falls back only when the preferred model is unsupported', async () => {
-  process.env.HF_VISION_MODEL = 'google/gemma-test';
-  process.env.HF_VISION_FALLBACK_MODEL = 'Qwen/vision-test';
+  process.env.HF_VISION_MODEL = 'Qwen/Qwen2.5-VL-7B-Instruct';
+  process.env.HF_VISION_FALLBACK_MODEL = 'Qwen/Qwen2.5-VL-7B-Instruct-fallback';
   const requestedModels = [];
   globalThis.fetch = async (_url, options) => {
     const model = JSON.parse(options.body).model;
     requestedModels.push(model);
-    if (model === 'google/gemma-test') {
+    if (model === 'Qwen/Qwen2.5-VL-7B-Instruct') {
       return jsonResponse({ error: { code: 'model_not_supported' } }, 400);
     }
     return jsonResponse({ choices: [{ message: { content: 'Fallback vision reply.' } }] });
@@ -367,5 +367,5 @@ test('vision falls back only when the preferred model is unsupported', async () 
 
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { reply: 'Fallback vision reply.' });
-  assert.deepEqual(requestedModels, ['google/gemma-test', 'Qwen/vision-test']);
+  assert.deepEqual(requestedModels, ['Qwen/Qwen2.5-VL-7B-Instruct', 'Qwen/Qwen2.5-VL-7B-Instruct-fallback']);
 });

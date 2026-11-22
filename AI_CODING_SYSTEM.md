@@ -160,10 +160,10 @@ shows which models are in play.
 | Module | Service | Models |
 |---|---|---|
 | `lib/cloudflare.js` | Workers AI | Llama 3.2 3B, Qwen 3.8 27B, Qwen 2.5 Coder 32B, FLUX.1 Schnell, SDXL, BGE-M3, Stable Video Diffusion, Music v2 |
-| `lib/gemini-flash.js` | Google AI Studio | Gemini Flash, Gemma 4, Gemini Embedding 001, Gemini image |
+| `lib/gemini-flash.js` | Google AI Studio | Gemini Flash, Gemini Embedding 001, Gemini image |
 | `lib/llama-whisper.js` | Groq | Qwen 3.8, Llama 3.3/3.4, GPT-OSS, Whisper-large-v3-turbo, PlayAI TTS |
 | `lib/flux-sdxl.js` | fal.ai | FLUX.1 Schnell, FLUX.1 Pro Kontext, SDXL, Kling Video, Stable Audio, PlayHT TTS, Wizper |
-| `lib/bge-m3-flux.js` | Hugging Face | Gemma 4 12B, DeepSeek-V3.2, FLUX.1 Krea Dev, BGE-M3, Qwen2.5-VL 7B |
+| `lib/bge-m3-flux.js` | Hugging Face | Qwen3 235B Instruct, DeepSeek-V3.2, FLUX.1 Krea Dev, BGE-M3, Qwen2.5-VL 7B |
 | `lib/pollinations.js` | free speech only, no credential | Piper, Kokoro |
 | `lib/hunyuan3d-2.js` | Hugging Face Space | Hunyuan3D-2, TRELLIS |
 

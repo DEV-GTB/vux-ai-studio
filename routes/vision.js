@@ -33,7 +33,7 @@ router.post('/', validateBody(visionBodySchema), async (req, res) => {
 
   try {
     const visionModels = [...new Set([
-      process.env.HF_VISION_MODEL || 'google/gemma-4-12B-it',
+      process.env.HF_VISION_MODEL || 'Qwen/Qwen2.5-VL-7B-Instruct',
       process.env.HF_VISION_FALLBACK_MODEL || DEFAULT_VISION_FALLBACK,
     ])];
     let response;

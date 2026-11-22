@@ -27,7 +27,7 @@ beforeEach(() => {
   // Only the Hugging Face route is configured, so one prompt is captured
   // and nothing else is called.
   process.env.HF_TOKEN = 'test-huggingface-token';
-  process.env.HF_CHAT_MODEL = 'google/gemma-test';
+  process.env.HF_CHAT_MODEL = 'Qwen/Qwen3-235B-A22B-Instruct-2507';
   process.env.GEMINI_API_KEY = '';
   process.env.GROQ_API_KEY = '';
   process.env.DEEPSEEK_API_KEY = '';

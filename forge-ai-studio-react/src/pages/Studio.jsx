@@ -19,11 +19,12 @@ import {
 
 // Coding LLM options for the Studio AI assistant. DeepSeek is left as the
 // default; the others are the alternate models the coding pipeline can use.
+// NOTE: Gemma models are not used — real Gemini models (gemini-3.8-flash) power
+// the AI answers.
 const AI_CODING_MODELS = [
   { value: 'deepseek-flash', label: 'DeepSeek (deepseek-flash)' },
   { value: '@cf/qwen/qwen3.8-27b', label: 'Cloudflare Qwen (@cf/qwen/qwen3.8-27b)' },
-  { value: '@cf/google/gemma-4-26b-it', label: 'Cloudflare Gemma (@cf/google/gemma-4-26b-it)' },
-  { value: 'gemini-3.6-flash', label: 'Gemini (gemini-3.6-flash)' },
+  { value: 'gemini-3.8-flash', label: 'Gemini (gemini-3.8-flash)' },
 ]
 
 // Custom Monaco theme to match our dark color scheme

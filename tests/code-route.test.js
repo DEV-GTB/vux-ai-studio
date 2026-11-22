@@ -26,7 +26,7 @@ beforeEach(() => {
   process.env.HF_TOKEN = 'test-huggingface-token';
   process.env.GEMINI_API_KEY = '';
   process.env.DEEPSEEK_API_KEY = '';
-  process.env.HF_CHAT_MODEL = 'google/gemma-test';
+  process.env.HF_CHAT_MODEL = 'Qwen/Qwen3-235B-A22B-Instruct-2507';
   process.env.HF_DEEPSEEK_MODEL = 'deepseek-test';
 });
 

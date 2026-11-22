@@ -303,30 +303,26 @@ async function callDeepSeek(messages, model = process.env.DEEPSEEK_MODEL || 'dee
   return text;
 }
 
-async function callGemini(messages) {
-  const configuredModel = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
-  const models = [...new Set([configuredModel, 'gemini-3.6-flash'])];
+async function callGemini(messages, model = process.env.GEMINI_MODEL || 'gemini-3.8-flash') {
+  const fallbackModel = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.6-flash';
+  const models = [...new Set([model, fallbackModel])];
   let data = {};
   let response;
 
-  for (const model of models) {
-    const isGemma = model.toLowerCase().startsWith('gemma-');
+  for (const geminiModel of models) {
     const contents = messages.slice(1).map((message) => ({
       role: message.role === 'assistant' ? 'model' : 'user',
       parts: toGeminiParts(message.content),
     }));
     const systemPrompt = messages[0]?.content || `${IDENTITY_PROMPT}\n\n${FORCE_ENGLISH_INSTRUCTIONS}`;
-    if (isGemma && contents[0]?.role === 'user') {
-      contents[0].parts.unshift({ text: systemPrompt });
-    }
 
     response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...(!isGemma ? { systemInstruction: { parts: [{ text: systemPrompt }] } } : {}),
+          systemInstruction: { parts: [{ text: systemPrompt }] },
           contents,
         }),
       }
@@ -358,6 +354,12 @@ async function callGemini(messages) {
 router.post('/', validateBody(chatBodySchema), async (req, res) => {
   const { messages } = req.body;
   const preferredCodingModel = typeof req.body?.model === 'string' ? req.body.model.trim() : '';
+  const userCodingDeepSeek = preferredCodingModel.startsWith('deepseek');
+  const userCodingCloudflare = preferredCodingModel.startsWith('@cf');
+  const userCodingGemini = preferredCodingModel.startsWith('gemini');
+  const codingDeepSeekModel = userCodingDeepSeek ? preferredCodingModel : (process.env.DEEPSEEK_MODEL || 'deepseek-flash');
+  const codingGeminiModel = userCodingGemini ? preferredCodingModel : (process.env.GEMINI_MODEL || 'gemini-3.8-flash');
+  const codingCloudflareModel = userCodingCloudflare ? preferredCodingModel : '';
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'messages array is required' });
   }
@@ -453,7 +455,7 @@ router.post('/', validateBody(chatBodySchema), async (req, res) => {
   const hasMistral = Boolean(process.env.MISTRAL_API_KEY && process.env.MISTRAL_API_KEY !== 'your_mistral_api_key_here');
   const systemMessage = normalizedMessages[0];
   const userMessages = normalizedMessages.slice(1);
-  const chatModel = process.env.HF_CHAT_MODEL || 'google/gemma-4-12B-it';
+  const chatModel = process.env.HF_CHAT_MODEL || 'Qwen/Qwen3-235B-A22B-Instruct-2507';
   const deepSeekModel = process.env.HF_DEEPSEEK_MODEL || 'deepseek-ai/DeepSeek-V3.2';
   const huggingFaceModels = isCoding
     ? [...new Set([deepSeekModel, chatModel])]
@@ -489,10 +491,38 @@ router.post('/', validateBody(chatBodySchema), async (req, res) => {
   }
 
   let lastError = null;
-  if (!hasImageAttachment && isCoding && hasCloudflare) {
-    const cloudflareModels = preferredCodingModel && String(preferredCodingModel).startsWith('@cf')
-      ? [String(preferredCodingModel)]
-      : getCloudflareCodeModels();
+  if (isCoding && !hasImageAttachment && hasCloudflare && userCodingCloudflare) {
+    try {
+      const text = await callCloudflare(normalizedMessages, userCodingCloudflare);
+      return sendChatText(res, scrubIdentity(text), `Cloudflare ${userCodingCloudflare}`, userCodingCloudflare);
+    } catch (error) {
+      lastError = error;
+      console.warn(`[chat] Cloudflare Workers AI model ${userCodingCloudflare} failed; trying the next configured service.`);
+    }
+  }
+
+  if (isCoding && hasDeepSeek && userCodingDeepSeek) {
+    try {
+      const text = await callDeepSeek(normalizedMessages, userCodingDeepSeek);
+      return sendChatText(res, scrubIdentity(text), 'DeepSeek', userCodingDeepSeek, '', newsImages);
+    } catch (error) {
+      lastError = error;
+      console.warn(`[chat] DeepSeek route failed with HTTP ${error?.status || 'provider-error'}; trying the next configured service.`);
+    }
+  }
+
+  if (isCoding && hasGemini && userCodingGemini) {
+    try {
+      const text = await callGemini(normalizedMessages, userCodingGemini);
+      return sendChatText(res, scrubIdentity(text), 'Gemini', userCodingGemini, '', newsImages);
+    } catch (error) {
+      lastError = error;
+      console.warn('[chat] Gemini route failed; trying the next configured service:', error?.status || error?.message);
+    }
+  }
+
+  if (!hasImageAttachment && isCoding && hasCloudflare && !userCodingCloudflare && !userCodingDeepSeek && !userCodingGemini) {
+    const cloudflareModels = getCloudflareCodeModels();
     for (const model of cloudflareModels) {
       try {
         const text = await callCloudflare(normalizedMessages, model);
@@ -514,10 +544,10 @@ router.post('/', validateBody(chatBodySchema), async (req, res) => {
     }
   }
 
-  if (isCoding && hasDeepSeek) {
+  if (isCoding && hasDeepSeek && !userCodingDeepSeek && !userCodingGemini) {
     try {
-      const text = await callDeepSeek(normalizedMessages, preferredCodingModel || undefined);
-      return sendChatText(res, scrubIdentity(text), 'DeepSeek', preferredCodingModel || process.env.DEEPSEEK_MODEL || 'deepseek-flash', '', newsImages);
+      const text = await callDeepSeek(normalizedMessages, codingDeepSeekModel);
+      return sendChatText(res, scrubIdentity(text), 'DeepSeek', codingDeepSeekModel, '', newsImages);
     } catch (error) {
       lastError = error;
       console.warn(`[chat] DeepSeek route failed with HTTP ${error?.status || 'provider-error'}; trying the next configured service.`);
@@ -526,8 +556,8 @@ router.post('/', validateBody(chatBodySchema), async (req, res) => {
 
   if (!isCoding && hasGemini) {
     try {
-      const text = await callGemini(normalizedMessages);
-      return sendChatText(res, scrubIdentity(text), 'Gemini', process.env.GEMINI_MODEL || 'gemini-3.6-flash', '', newsImages);
+      const text = await callGemini(normalizedMessages, codingGeminiModel);
+      return sendChatText(res, scrubIdentity(text), 'Gemini', codingGeminiModel, '', newsImages);
     } catch (error) {
       lastError = error;
       console.warn('[chat] Gemini route failed; trying the next configured service:', error?.status || 'provider-error');
@@ -567,10 +597,10 @@ router.post('/', validateBody(chatBodySchema), async (req, res) => {
     }
   }
 
-  if (isCoding && hasGemini) {
+  if (isCoding && hasGemini && !userCodingGemini) {
     try {
-      const text = await callGemini(normalizedMessages);
-      return sendChatText(res, scrubIdentity(text), 'Gemini', process.env.GEMINI_MODEL || 'gemini-3.6-flash', '', newsImages);
+      const text = await callGemini(normalizedMessages, codingGeminiModel);
+      return sendChatText(res, scrubIdentity(text), 'Gemini', codingGeminiModel, '', newsImages);
     } catch (error) {
       lastError = error;
       console.error('[chat] configured fallback failed:', error?.status || error?.message || 'unknown error');
@@ -579,8 +609,8 @@ router.post('/', validateBody(chatBodySchema), async (req, res) => {
 
   if (!isCoding && hasDeepSeek) {
     try {
-      const text = await callDeepSeek(normalizedMessages);
-      return sendChatText(res, scrubIdentity(text), 'DeepSeek', process.env.DEEPSEEK_MODEL || 'deepseek-flash', '', newsImages);
+      const text = await callDeepSeek(normalizedMessages, codingDeepSeekModel);
+      return sendChatText(res, scrubIdentity(text), 'DeepSeek', codingDeepSeekModel, '', newsImages);
     } catch (error) {
       lastError = error;
       console.error('[chat] DeepSeek fallback failed:', error?.status || error?.message || 'unknown error');
