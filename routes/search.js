@@ -13,6 +13,7 @@
 
 import { Router } from 'express';
 import { liveSearch } from '../lib/liveSearch.js';
+import { newsDigest } from '../lib/newsDigest.js';
 import { validateBody, validateQuery } from '../lib/requestValidation.js';
 import { z } from 'zod';
 
@@ -49,6 +50,28 @@ router.post('/news', validateBody(newsBodySchema), async (req, res) => {
     return res.json(result);
   } catch (error) {
     return res.status(502).json({ kind: 'news', query: req.body.query, status: 'error', error: String(error?.message || error) });
+  }
+});
+
+// AI-powered news digest: fetch real news, write a professional paragraph for
+// each item with Gemini, and store every item one-by-one so nothing is lost.
+router.post('/news/digest', validateBody(newsBodySchema), async (req, res) => {
+  try {
+    const result = await newsDigest.digestNews(req.body.query);
+    return res.json(result);
+  } catch (error) {
+    return res.status(502).json({ kind: 'news-digest', query: req.body.query, status: 'error', error: String(error?.message || error) });
+  }
+});
+
+// History of previously digested news items (the AI's learned daily news).
+router.get('/news/digest/history', async (_req, res) => {
+  try {
+    const limit = _req.query.limit ? Number(_req.query.limit) : 50;
+    const result = await newsDigest.getStoredDigests({ limit });
+    return res.json(result);
+  } catch (error) {
+    return res.status(502).json({ kind: 'news-digest-history', status: 'error', error: String(error?.message || error) });
   }
 });
 

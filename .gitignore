@@ -35,3 +35,6 @@ image-batch-*/
 image-watermark-check/
 tools/image-*-check.mjs
 tools/pollinations-nologo-check.mjs
+
+# AI-digested news storage (append-only, contains fetched news content).
+data/news-digest/

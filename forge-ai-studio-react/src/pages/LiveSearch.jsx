@@ -5,6 +5,7 @@
 //   search_news(query)     -> GDELT / NewsAPI / NewsData / Wikipedia
 //   read_website(url)      -> Jina Reader / direct HTML
 //   analyze_website(url)   -> cheerio metadata + Jina content
+//   digest_news(query)     -> AI-written professional paragraphs (Gemini)
 //
 // All API calls go to the backend (/api/search/*). Keys live only on the
 // backend (.env, gitignored). SSRF protection is enforced on the backend.
@@ -14,13 +15,14 @@ import { apiUrl } from '../lib/api.js'
 
 const TABS = [
   { id: 'web', label: 'Search Web', icon: '🔍', desc: 'General internet search' },
-  { id: 'news', label: 'Search News', icon: '📰', desc: 'Latest headlines & current events' },
+  { id: 'news', label: 'News Digest', icon: '📰', desc: 'AI-explained headlines & current events' },
   { id: 'read', label: 'Read Website', icon: '📖', desc: 'Readable page content' },
   { id: 'analyze', label: 'Analyze Website', icon: '🧩', desc: 'Site structure & metadata' },
+  { id: 'history', label: 'Digest History', icon: '🗂️', desc: 'Previously digested news items' },
 ]
 
 export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _username }) {
-  const [activeTab, setActiveTab] = useState('web')
+  const [activeTab, setActiveTab] = useState('news')
 
   // Web search state
   const [webQuery, setWebQuery] = useState('')
@@ -28,9 +30,9 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
   const [webLoading, setWebLoading] = useState(false)
   const [webError, setWebError] = useState('')
 
-  // News search state
+  // News digest state
   const [newsQuery, setNewsQuery] = useState('')
-  const [newsResults, setNewsResults] = useState([])
+  const [newsItems, setNewsItems] = useState([])
   const [newsLoading, setNewsLoading] = useState(false)
   const [newsError, setNewsError] = useState('')
 
@@ -45,6 +47,10 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
   const [analysis, setAnalysis] = useState(null)
   const [analyzeLoading, setAnalyzeLoading] = useState(false)
   const [analyzeError, setAnalyzeError] = useState('')
+
+  // Digest history state
+  const [historyItems, setHistoryItems] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   const sampleWebQueries = [
     'VUX AI Studio documentation',
@@ -86,25 +92,41 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
     }
   }
 
-  const searchNews = async () => {
+  const digestNews = async () => {
     if (!newsQuery.trim()) return
     setNewsLoading(true)
     setNewsError('')
-    setNewsResults([])
+    setNewsItems([])
     try {
-      const response = await fetch(apiUrl('/api/search/news'), {
+      const response = await fetch(apiUrl('/api/search/news/digest'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: newsQuery.trim() }),
       })
       const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.error || 'News search failed')
-      setNewsResults(data.results || [])
+      if (!response.ok) throw new Error(data.error || 'News digest failed')
+      setNewsItems(data.items || [])
     } catch (error) {
-      setNewsError(error.message || 'News search could not complete.')
-      console.error('News search error:', error)
+      setNewsError(error.message || 'News digest could not complete.')
+      console.error('News digest error:', error)
     } finally {
       setNewsLoading(false)
+    }
+  }
+
+  const loadHistory = async () => {
+    setHistoryLoading(true)
+    try {
+      const response = await fetch(apiUrl('/api/search/news/digest/history?limit=30'), {
+        headers: { 'Accept': 'application/json' },
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'Could not load history')
+      setHistoryItems(data.items || [])
+    } catch (error) {
+      console.error('History load error:', error)
+    } finally {
+      setHistoryLoading(false)
     }
   }
 
@@ -183,6 +205,67 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
     </article>
   )
 
+  const renderNewsItem = (item, index) => {
+    const hasDigest = Boolean(item.aiDigest)
+    return (
+      <article
+        key={item.url || item.title || index}
+        className={`bg-forge-surface border border-forge-border rounded-xl p-5 mb-4 transition-all ${
+          hasDigest ? 'border-forge-primary/50 shadow-sm' : 'border-forge-border'
+        }`}
+      >
+        <div className="flex items-start gap-2 mb-2">
+          <span className="text-xs font-medium text-forge-primary">{item.provider}</span>
+          {item.aiDigestError && (
+            <span className="text-xs font-medium text-orange-400">AI writing pending</span>
+          )}
+          {!item.aiDigest && !item.aiDigestError && (
+            <span className="text-xs font-medium text-forge-textMuted">Raw</span>
+          )}
+        </div>
+        <h3 className="text-sm font-semibold text-white mb-2 leading-snug">{item.title}</h3>
+        <p className="text-sm text-forge-textMuted mb-3 line-clamp-2">
+          {item.description || '(no description)'}
+        </p>
+        <div className="flex items-center gap-2 text-xs text-forge-textMuted mb-3">
+          {item.publisher && <span>{item.publisher}</span>}
+          {item.date && <span>• {formatDate(item.date)}</span>}
+          <span>• retrieved {formatDate(item.retrievalTimestamp)}</span>
+        </div>
+
+        {/* AI-written professional paragraph — the core deliverable */ }
+        {item.aiDigest && (
+          <div className="mb-4 pl-4 border-l-2 border-forge-primary bg-forge-surfaceLow rounded-r-lg p-3">
+            <p className="text-sm text-forge-text leading-relaxed">
+              {item.aiDigest}
+            </p>
+            <div className="mt-2 flex items-center gap-1 text-[10px] text-forge-textMuted">
+              <span>Written by VUX AI</span>
+              {item.aiDigestModel && <span>• {item.aiDigestModel}</span>}
+            </div>
+          </div>
+        )}
+
+        {!item.aiDigest && item.aiDigestError && (
+          <div className="mb-4 pl-4 border-l-2 border-orange-500 bg-orange-500/10 rounded-r-lg p-3">
+            <p className="text-xs text-orange-200">
+              AI paragraph pending: {item.aiDigestError}
+            </p>
+          </div>
+        )}
+
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-medium text-forge-primary hover:underline flex items-center gap-1"
+        >
+          Open source ↗
+        </a>
+      </article>
+    )
+  }
+
   return (
     <div className="min-h-screen">
       {/* Top Bar */ }
@@ -205,19 +288,19 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
       <div className="p-4 lg:p-8 pb-24">
         {/* Tool Tabs */ }
         <div className="bg-forge-surface border border-forge-border rounded-2xl p-1 mb-6 scale-in">
-          <div className="flex gap-1">
+          <div className="flex gap-1 overflow-x-auto">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all ${
+                onClick={() => { setActiveTab(tab.id); if (tab.id === 'history') loadHistory() }}
+                className={`whitespace-nowrap py-3 px-4 rounded-lg text-sm font-medium transition-all ${
                   activeTab === tab.id
                     ? 'bg-forge-primary text-black border border-forge-primary'
                     : 'text-forge-textMuted hover:bg-forge-surfaceLow hover:text-white'
                 }`}
               >
                 <span className="text-lg">{tab.icon}</span>
-                <span className="ml-2 hidden sm:inline">{tab.label}</span>
+                <span className="ml-2">{tab.label}</span>
               </button>
             ))}
           </div>
@@ -281,25 +364,27 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
             {activeTab === 'news' && (
               <div className="bg-forge-surface border border-forge-border rounded-2xl p-6 scale-in">
                 <h2 className="text-lg font-display font-semibold mb-4 flex items-center gap-2">
-                  <span>📰</span> Search News
+                  <span>📰</span> News Digest
                 </h2>
-                <p className="text-sm text-forge-textMuted mb-4">{TABS.find((t) => t.id === 'news').desc}</p>
+                <p className="text-sm text-forge-textMuted mb-4">
+                  Real-time news fetched from live sources, then each story is explained by VUX AI in a professional paragraph.
+                </p>
                 <div className="relative mb-4">
                   <input
                     type="text"
                     value={newsQuery}
                     onChange={(e) => setNewsQuery(e.target.value)}
-                    placeholder="Enter a news topic..."
-                    onKeyPress={(e) => e.key === 'Enter' && searchNews()}
+                    placeholder="e.g. artificial intelligence news"
+                    onKeyPress={(e) => e.key === 'Enter' && digestNews()}
                     className="w-full bg-forge-surfaceLow border border-forge-border rounded-xl px-4 py-3 text-sm text-forge-text focus:outline-none focus:border-forge-primary transition-all disabled:opacity-50"
                     disabled={newsLoading}
                   />
                   <button
-                    onClick={searchNews}
+                    onClick={digestNews}
                     disabled={newsLoading || !newsQuery.trim()}
                     className="absolute right-2 top-2 w-10 h-10 rounded-lg bg-forge-primary text-black flex items-center justify-center hover:bg-forge-primaryHover disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
-                    {newsLoading ? '⏳' : '🔍'}
+                    {newsLoading ? '⏳' : '📰'}
                   </button>
                 </div>
                 {sampleNewsQueries.length > 0 && (
@@ -309,7 +394,7 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
                       {sampleNewsQueries.map((q, i) => (
                         <button
                           key={i}
-                          onClick={() => { setNewsQuery(q); searchNews() }}
+                          onClick={() => { setNewsQuery(q); digestNews() }}
                           className="px-3 py-1.5 bg-forge-surfaceLow border border-forge-border rounded-lg text-xs hover:border-forge-primary transition-all"
                         >
                           {q}
@@ -324,7 +409,7 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
                   </p>
                 )}
                 {newsLoading && !newsError && (
-                  <p className="text-sm text-forge-textMuted italic">Searching news...</p>
+                  <p className="text-sm text-forge-textMuted italic">Fetching news and writing AI paragraphs...</p>
                 )}
               </div>
             )}
@@ -398,6 +483,27 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
                 )}
               </div>
             )}
+
+            {activeTab === 'history' && (
+              <div className="bg-forge-surface border border-forge-border rounded-2xl p-6 scale-in">
+                <h2 className="text-lg font-display font-semibold mb-4 flex items-center gap-2">
+                  <span>🗂️</span> Digest History
+                </h2>
+                <p className="text-sm text-forge-textMuted mb-4">
+                  Every news item VUX AI has digested is stored here, one by one, so nothing is ever lost.
+                </p>
+                <button
+                  onClick={loadHistory}
+                  disabled={historyLoading}
+                  className="px-4 py-2 bg-forge-primary text-black rounded-lg hover:bg-forge-primaryHover disabled:opacity-50 transition-all"
+                >
+                  {historyLoading ? '⏳' : '🔄 Refresh History'}
+                </button>
+                {historyLoading && (
+                  <p className="text-sm text-forge-textMuted italic mt-2">Loading history...</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right: Results (8 cols) */ }
@@ -425,18 +531,18 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
               <div className="bg-forge-surface border border-forge-border rounded-2xl p-6 scale-in">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-display font-semibold flex items-center gap-2">
-                    <span>📰</span> News Results
+                    <span>📰</span> News Digest
                   </h2>
                   <span className="text-xs font-medium bg-forge-surfaceLow px-2 py-1 rounded text-forge-textMuted">
-                    {newsResults.length} result{newsResults.length !== 1 ? 's' : ''}
+                    {newsItems.length} story{newsItems.length !== 1 ? 's' : ''}
                   </span>
                 </div>
-                {newsResults.length === 0 && !newsLoading && !newsError && (
+                {newsItems.length === 0 && !newsLoading && !newsError && (
                   <div className="text-center py-12">
-                    <p className="text-forge-textMuted text-sm">Enter a topic to search news.</p>
+                    <p className="text-forge-textMuted text-sm">Enter a topic to get an AI-explained news digest.</p>
                   </div>
                 )}
-                {newsResults.map((result) => renderResultCard(result))}
+                {newsItems.map((item, i) => renderNewsItem(item, i))}
               </div>
             )}
 
@@ -563,6 +669,60 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
                 )}
               </div>
             )}
+
+            {activeTab === 'history' && (
+              <div className="bg-forge-surface border border-forge-border rounded-2xl p-6 scale-in">
+                {historyLoading ? (
+                  <div className="text-center py-12">
+                    <p className="text-forge-textMuted text-sm italic">Loading digest history...</p>
+                  </div>
+                ) : historyItems.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-forge-textMuted text-sm">No digested news yet. Run a News Digest first.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-xs text-forge-textMuted mb-4">
+                      {historyItems.length} digested story{historyItems.length !== 1 ? 's' : ''} stored
+                    </div>
+                    {historyItems.map((item, i) => (
+                      <div key={i} className="mb-4 border-b border-forge-border pb-4 last:border-0">
+                        <div className="flex items-start gap-2 mb-1">
+                          <span className="text-xs font-medium text-forge-primary">{item.provider || 'stored'}</span>
+                          {item.aiDigest && (
+                            <span className="text-xs font-medium text-forge-primary">✓ AI-written</span>
+                          )}
+                        </div>
+                        <h4 className="text-sm font-semibold text-white mb-1">{item.title}</h4>
+                        {item.aiDigest && (
+                          <p className="text-sm text-forge-text leading-relaxed mb-2">
+                            {item.aiDigest}
+                          </p>
+                        )}
+                        {!item.aiDigest && (
+                          <p className="text-xs text-forge-textMuted mb-2">
+                            AI paragraph not yet generated: {item.aiDigestError || 'pending'}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2 text-[10px] text-forge-textMuted">
+                          {item.publisher && <span>{item.publisher}</span>}
+                          {item.date && <span>• {formatDate(item.date)}</span>}
+                          <span>• stored {formatDate(item.storedAt || item.retrievalTimestamp)}</span>
+                        </div>
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-medium text-forge-primary hover:underline flex items-center gap-1 mt-1"
+                        >
+                          Open source ↗
+                        </a>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -576,15 +736,11 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
             <ul className="space-y-2 text-sm text-forge-textMuted">
               <li className="flex items-start gap-2">
                 <span className="text-forge-primary">✓</span>
-                <span>Web search uses a self-hosted SearXNG instance (no API key).</span>
+                <span>News Digest fetches real-time stories from live sources, then VUX AI writes a professional paragraph for each one.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-forge-primary">✓</span>
-                <span>News searches GDELT → NewsAPI → NewsData → Wikipedia automatically.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-forge-primary">✓</span>
-                <span>Website reading uses Jina Reader with direct HTML fallback.</span>
+                <span>Every digested item is stored one-by-one so nothing is ever lost — check Digest History.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-forge-primary">✓</span>
