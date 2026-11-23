@@ -19,6 +19,7 @@
     "@gradio/client": "^2.7.1",
     "@huggingface/inference": "^4.13.28",
     "better-sqlite3": "^13.0.3",
+    "cheerio": "^1.2.0",
     "cloudflare": "^7.3.0",
     "compression": "^1.8.2",
     "cors": "^2.8.5",
