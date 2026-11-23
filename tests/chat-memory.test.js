@@ -30,7 +30,6 @@ beforeEach(() => {
   process.env.HF_CHAT_MODEL = 'Qwen/Qwen3-235B-A22B-Instruct-2507';
   process.env.GEMINI_API_KEY = '';
   process.env.GROQ_API_KEY = '';
-  process.env.DEEPSEEK_API_KEY = '';
   process.env.CLOUDFLARE_API_TOKEN = '';
   process.env.CLOUDFLARE_ACCOUNT_ID = '';
 });

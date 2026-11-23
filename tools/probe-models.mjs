@@ -150,7 +150,6 @@ const PROBES = {
   ],
 
   embeddings: [
-    { model: '@cf/google/embeddinggemma-300m' },
     { model: '@cf/qwen/qwen3-embedding-0.6b' },
     { model: '@cf/baai/bge-m3' },
   ],

@@ -17,12 +17,9 @@ import {
   supportsFolderAccess,
 } from '../lib/localFiles.js'
 
-// Coding LLM options for the Studio AI assistant. DeepSeek is left as the
-// default; the others are the alternate models the coding pipeline can use.
-// NOTE: Gemma models are not used — real Gemini models (gemini-3.8-flash) power
-// the AI answers.
+// Coding LLM options for the Studio AI assistant. The available alternate
+// models the coding pipeline can use. Real Gemini models power the AI answers.
 const AI_CODING_MODELS = [
-  { value: 'deepseek-flash', label: 'DeepSeek (deepseek-flash)' },
   { value: '@cf/qwen/qwen3.8-27b', label: 'Cloudflare Qwen (@cf/qwen/qwen3.8-27b)' },
   { value: 'gemini-3.8-flash', label: 'Gemini (gemini-3.8-flash)' },
 ]
@@ -300,7 +297,7 @@ function StudioWorkspace({ username }) {
       return 'ask'
     }
   })
-  const [aiModel, setAiModel] = useState('deepseek-flash')
+  const [aiModel, setAiModel] = useState('gemini-3.8-flash')
   const aiOperation = parseAiFileAction(aiReply)
   const aiOperationSummary = describeAiAction(aiOperation)
   const displayedAiReply = aiOperation?.action === 'answer' ? aiOperation.message : aiReply

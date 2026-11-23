@@ -39,17 +39,11 @@ services:
         sync: false
       - key: CLOUDFLARE_IMAGE_MODEL
         sync: false
-      - key: DEEPSEEK_API_KEY
-        sync: false
-      - key: DEEPSEEK_MODEL
-        sync: false
       - key: HF_TOKEN
         sync: false
       - key: HF_IMAGE_MODEL
         sync: false
       - key: HF_CHAT_MODEL
-        sync: false
-      - key: HF_DEEPSEEK_MODEL
         sync: false
       - key: HF_VISION_MODEL
         sync: false

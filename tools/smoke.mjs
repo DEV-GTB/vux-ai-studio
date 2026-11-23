@@ -56,7 +56,7 @@ await check('chat', '/api/chat', {
 }, (response, payload) => {
   if (response.status !== 200) return `HTTP ${response.status}: ${payload?.error}`;
   if (!payload?.text) return 'no text returned';
-  if (/gemini|deepseek|gemma|claude|openai|qwen|llama/i.test(payload.text)) return 'the response names a service';
+  if (/gemini|claude|openai|qwen|llama/i.test(payload.text)) return 'the response names a service';
   return null;
 });
 
@@ -67,7 +67,7 @@ await check('code', '/api/code', {
 }, (response, payload) => {
   if (response.status !== 200) return `HTTP ${response.status}: ${payload?.error}`;
   if (!payload?.action) return 'no action returned';
-  if (JSON.stringify(payload).match(/provider|model|gemini|deepseek/i)) return 'the response names a service';
+  if (JSON.stringify(payload).match(/provider|model|gemini/i)) return 'the response names a service';
   return null;
 });
 

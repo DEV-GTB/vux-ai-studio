@@ -37,7 +37,7 @@ select context   lib/codeContext.js       which workspace files matter?
 build prompt     lib/promptBuilder.js     rules for the language + action contract
     │
     ▼
-call provider    lib/providers.js         DeepSeek → HF → Gemini → Cloudflare
+call provider    lib/providers.js         HF → Gemini → Cloudflare
     │
     ▼
 parse + validate lib/studioAgent.js       is this a safe, well-formed action?
@@ -163,7 +163,7 @@ shows which models are in play.
 | `lib/gemini-flash.js` | Google AI Studio | Gemini Flash, Gemini Embedding 001, Gemini image |
 | `lib/llama-whisper.js` | Groq | Qwen 3.8, Llama 3.3/3.4, GPT-OSS, Whisper-large-v3-turbo, PlayAI TTS |
 | `lib/flux-sdxl.js` | fal.ai | FLUX.1 Schnell, FLUX.1 Pro Kontext, SDXL, Kling Video, Stable Audio, PlayHT TTS, Wizper |
-| `lib/bge-m3-flux.js` | Hugging Face | Qwen3 235B Instruct, DeepSeek-V3.2, FLUX.1 Krea Dev, BGE-M3, Qwen2.5-VL 7B |
+| `lib/bge-m3-flux.js` | Hugging Face | Qwen3 235B Instruct, FLUX.1 Krea Dev, BGE-M3, Qwen2.5-VL 7B |
 | `lib/pollinations.js` | free speech only, no credential | Piper, Kokoro |
 | `lib/hunyuan3d-2.js` | Hugging Face Space | Hunyuan3D-2, TRELLIS |
 

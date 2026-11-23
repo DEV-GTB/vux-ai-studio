@@ -29,3 +29,9 @@ logs/
 *.njsproj
 *.sln
 *.sw?
+
+# Live-check / batch test artifacts (not part of the product).
+image-batch-*/
+image-watermark-check/
+tools/image-*-check.mjs
+tools/pollinations-nologo-check.mjs

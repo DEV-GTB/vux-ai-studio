@@ -273,36 +273,6 @@ async function callMistral(messages) {
   return text;
 }
 
-async function callDeepSeek(messages, model = process.env.DEEPSEEK_MODEL || 'deepseek-flash') {
-  const response = await fetch('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      thinking: { type: 'enabled' },
-      reasoning_effort: 'high',
-      stream: false,
-    }),
-  });
-  const body = await response.text();
-  let data = {};
-  try { data = body ? JSON.parse(body) : {}; } catch { data = {}; }
-
-  if (!response.ok) {
-    const error = new Error(data?.error?.message || 'Chat request failed');
-    error.status = response.status;
-    throw error;
-  }
-
-  const text = extractAssistantText(data);
-  if (!text) throw new Error('The chat service returned an empty response.');
-  return text;
-}
-
 async function callGemini(messages, model = process.env.GEMINI_MODEL || 'gemini-3.8-flash') {
   const fallbackModel = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.6-flash';
   const models = [...new Set([model, fallbackModel])];
@@ -354,10 +324,8 @@ async function callGemini(messages, model = process.env.GEMINI_MODEL || 'gemini-
 router.post('/', validateBody(chatBodySchema), async (req, res) => {
   const { messages } = req.body;
   const preferredCodingModel = typeof req.body?.model === 'string' ? req.body.model.trim() : '';
-  const userCodingDeepSeek = preferredCodingModel.startsWith('deepseek');
   const userCodingCloudflare = preferredCodingModel.startsWith('@cf');
   const userCodingGemini = preferredCodingModel.startsWith('gemini');
-  const codingDeepSeekModel = userCodingDeepSeek ? preferredCodingModel : (process.env.DEEPSEEK_MODEL || 'deepseek-flash');
   const codingGeminiModel = userCodingGemini ? preferredCodingModel : (process.env.GEMINI_MODEL || 'gemini-3.8-flash');
   const codingCloudflareModel = userCodingCloudflare ? preferredCodingModel : '';
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -451,15 +419,11 @@ router.post('/', validateBody(chatBodySchema), async (req, res) => {
   );
   const hasHuggingFace = Boolean(process.env.HF_TOKEN && process.env.HF_TOKEN !== 'your_huggingface_api_key_here');
   const hasGemini = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here');
-  const hasDeepSeek = Boolean(process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY !== 'your_deepseek_api_key_here');
   const hasMistral = Boolean(process.env.MISTRAL_API_KEY && process.env.MISTRAL_API_KEY !== 'your_mistral_api_key_here');
   const systemMessage = normalizedMessages[0];
   const userMessages = normalizedMessages.slice(1);
   const chatModel = process.env.HF_CHAT_MODEL || 'Qwen/Qwen3-235B-A22B-Instruct-2507';
-  const deepSeekModel = process.env.HF_DEEPSEEK_MODEL || 'deepseek-ai/DeepSeek-V3.2';
-  const huggingFaceModels = isCoding
-    ? [...new Set([deepSeekModel, chatModel])]
-    : [...new Set([chatModel, deepSeekModel])];
+  const huggingFaceModels = [chatModel];
 
   // Chat image tool: a create / generate / make / draw / design request goes
   // straight to the image model and the result comes back inside the chat
@@ -501,16 +465,6 @@ router.post('/', validateBody(chatBodySchema), async (req, res) => {
     }
   }
 
-  if (isCoding && hasDeepSeek && userCodingDeepSeek) {
-    try {
-      const text = await callDeepSeek(normalizedMessages, userCodingDeepSeek);
-      return sendChatText(res, scrubIdentity(text), 'DeepSeek', userCodingDeepSeek, '', newsImages);
-    } catch (error) {
-      lastError = error;
-      console.warn(`[chat] DeepSeek route failed with HTTP ${error?.status || 'provider-error'}; trying the next configured service.`);
-    }
-  }
-
   if (isCoding && hasGemini && userCodingGemini) {
     try {
       const text = await callGemini(normalizedMessages, userCodingGemini);
@@ -521,7 +475,7 @@ router.post('/', validateBody(chatBodySchema), async (req, res) => {
     }
   }
 
-  if (!hasImageAttachment && isCoding && hasCloudflare && !userCodingCloudflare && !userCodingDeepSeek && !userCodingGemini) {
+  if (!hasImageAttachment && isCoding && hasCloudflare && !userCodingCloudflare && !userCodingGemini) {
     const cloudflareModels = getCloudflareCodeModels();
     for (const model of cloudflareModels) {
       try {
@@ -541,16 +495,6 @@ router.post('/', validateBody(chatBodySchema), async (req, res) => {
     } catch (error) {
       lastError = error;
       console.warn('[chat] Groq route failed; trying the next configured service:', error?.status || error?.message);
-    }
-  }
-
-  if (isCoding && hasDeepSeek && !userCodingDeepSeek && !userCodingGemini) {
-    try {
-      const text = await callDeepSeek(normalizedMessages, codingDeepSeekModel);
-      return sendChatText(res, scrubIdentity(text), 'DeepSeek', codingDeepSeekModel, '', newsImages);
-    } catch (error) {
-      lastError = error;
-      console.warn(`[chat] DeepSeek route failed with HTTP ${error?.status || 'provider-error'}; trying the next configured service.`);
     }
   }
 
@@ -607,18 +551,8 @@ router.post('/', validateBody(chatBodySchema), async (req, res) => {
     }
   }
 
-  if (!isCoding && hasDeepSeek) {
-    try {
-      const text = await callDeepSeek(normalizedMessages, codingDeepSeekModel);
-      return sendChatText(res, scrubIdentity(text), 'DeepSeek', codingDeepSeekModel, '', newsImages);
-    } catch (error) {
-      lastError = error;
-      console.error('[chat] DeepSeek fallback failed:', error?.status || error?.message || 'unknown error');
-    }
-  }
-
   console.error('[chat] no configured service completed the request:', lastError?.status || lastError?.message || 'no credentials configured');
-  return res.status(hasHuggingFace || hasGemini || hasDeepSeek || hasGroq || hasCloudflare ? 502 : 503).json({ error: GENERIC_ERROR.chat });
+  return res.status(hasHuggingFace || hasGemini || hasGroq || hasCloudflare ? 502 : 503).json({ error: GENERIC_ERROR.chat });
 });
 
 export default router;

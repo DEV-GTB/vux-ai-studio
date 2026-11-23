@@ -155,7 +155,6 @@ app.get('/api/health', (req, res) => {
       huggingface: Boolean(process.env.HF_TOKEN && process.env.HF_TOKEN !== 'your_huggingface_api_key_here'),
       groq: Boolean(process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'your_groq_api_key_here'),
       cloudflare: Boolean(process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_API_TOKEN !== 'your_cloudflare_api_token_here' && process.env.CLOUDFLARE_ACCOUNT_ID),
-      deepseek: Boolean(process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY !== 'your_deepseek_api_key_here'),
     },
   });
 });

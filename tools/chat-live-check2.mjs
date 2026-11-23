@@ -5,8 +5,6 @@ import express from 'express';
 process.env.HF_TOKEN = process.env.HF_TOKEN;
 process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 process.env.GEMINI_MODEL = process.env.GEMINI_MODEL;
-process.env.DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
-process.env.DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL;
 
 const { default: chatRouter } = await import('../routes/chat.js');
 

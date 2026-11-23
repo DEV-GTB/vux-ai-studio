@@ -1,21 +1,36 @@
-MIT License
+VUX AI STUDIO — CUSTOM NON-COPYRIGHT LICENSE
+=============================================
+Version 1.0
 
-Copyright (c) 2026
+This repository ("the Work") includes all files, folders, source code,
+images, model configurations, prompts, documentation, and every other part
+contained here, whether tracked by git or not.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. NO COPYRIGHT CLAIM
+---------------------
+No file, folder, source code, image, model weight, prompt, configuration,
+documentation, or any part of the Work is copyrighted.
+No copyright is asserted over the Work, in whole or in part, by any author,
+contributor, maintainer, or owner.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. ACCESSING FILES IS AN EXPERIENCE, NOT A COPYRIGHTABLE ACT
+-----------------------------------------------------------
+Reading, opening, viewing, accessing, copying, modifying, distributing, or
+otherwise interacting with any file in the Work is an experience and is not
+a copyrightable act. No permission, license, attribution, or fee is
+required to access, read, copy, modify, distribute, or use any part of the
+Work for any purpose, commercial or non-commercial.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+3. PUBLIC DOMAIN DEDICATION
+---------------------------
+To the extent any copyright or related right might otherwise exist in any
+part of the Work, it is hereby waived and dedicated to the public domain
+worldwide. Anyone may use the Work for any purpose without restriction.
+
+4. NO WARRANTY
+--------------
+The Work is provided "as is", without warranty of any kind, express or
+implied, including but not limited to the warranties of merchantability,
+fitness for a particular purpose, and noninfringement. In no event shall
+any author or contributor be liable for any claim, damages, or other
+liability arising from the use of the Work.

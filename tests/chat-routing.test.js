@@ -21,8 +21,6 @@ const originalEnvironment = {
   HF_TOKEN: process.env.HF_TOKEN,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
   GEMINI_MODEL: process.env.GEMINI_MODEL,
-  DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
-  DEEPSEEK_MODEL: process.env.DEEPSEEK_MODEL,
   GROQ_API_KEY: process.env.GROQ_API_KEY,
   GROQ_CHAT_MODEL: process.env.GROQ_CHAT_MODEL,
   CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN,
@@ -31,7 +29,6 @@ const originalEnvironment = {
   CLOUDFLARE_CODE_MODELS: process.env.CLOUDFLARE_CODE_MODELS,
   CLOUDFLARE_IMAGE_MODEL: process.env.CLOUDFLARE_IMAGE_MODEL,
   HF_CHAT_MODEL: process.env.HF_CHAT_MODEL,
-  HF_DEEPSEEK_MODEL: process.env.HF_DEEPSEEK_MODEL,
   HF_VISION_MODEL: process.env.HF_VISION_MODEL,
   HF_VISION_FALLBACK_MODEL: process.env.HF_VISION_FALLBACK_MODEL,
 };
@@ -53,8 +50,6 @@ beforeEach(() => {
   process.env.HF_TOKEN = 'test-huggingface-token';
   process.env.GEMINI_API_KEY = '';
   process.env.GEMINI_MODEL = 'gemini-3.8-flash';
-  process.env.DEEPSEEK_API_KEY = '';
-  process.env.DEEPSEEK_MODEL = 'deepseek-flash';
   process.env.GROQ_API_KEY = '';
   process.env.GROQ_CHAT_MODEL = 'qwen/qwen3.8-27b';
   process.env.CLOUDFLARE_API_TOKEN = '';
@@ -63,7 +58,6 @@ beforeEach(() => {
   process.env.CLOUDFLARE_CODE_MODELS = '@cf/qwen/qwen3.8-27b,@cf/meta/llama-3.3-70b-instruct-fp8-fast,@cf/qwen/qwq-32b';
   process.env.CLOUDFLARE_IMAGE_MODEL = '@cf/black-forest-labs/flux-1-schnell';
   process.env.HF_CHAT_MODEL = 'Qwen/Qwen3-235B-A22B-Instruct-2507';
-  process.env.HF_DEEPSEEK_MODEL = 'deepseek-ai/deepseek-test';
   delete process.env.HF_VISION_MODEL;
   delete process.env.HF_VISION_FALLBACK_MODEL;
 });
@@ -205,38 +199,6 @@ test('identity questions return immediately without calling an AI provider', asy
   assert.equal(body.text.split(/[.!?]+/).filter(Boolean).length, 6);
 });
 
-test('coding requests prefer the configured DeepSeek route', async () => {
-  let requestedModel = '';
-  globalThis.fetch = async (_url, options) => {
-    requestedModel = JSON.parse(options.body).model;
-    return jsonResponse({ choices: [{ message: { content: 'Here is the fix.' } }] });
-  };
-
-  const response = await ask([{ role: 'user', content: 'Debug this JavaScript function and fix the error.' }]);
-  assert.equal(response.status, 200);
-  assert.equal(requestedModel, 'deepseek-ai/deepseek-test');
-});
-
-test('coding requests prefer the configured DeepSeek API key', async () => {
-  process.env.DEEPSEEK_API_KEY = 'test-deepseek-key';
-  let requestedUrl = '';
-  let requestBody;
-  globalThis.fetch = async (url, options) => {
-    requestedUrl = String(url);
-    assert.equal(options.headers.Authorization, 'Bearer test-deepseek-key');
-    requestBody = JSON.parse(options.body);
-    return jsonResponse({ choices: [{ message: { content: 'Direct DeepSeek answer.' } }] });
-  };
-
-  const response = await ask([{ role: 'user', content: 'Debug this JavaScript function.' }]);
-  assert.equal(response.status, 200);
-  assert.equal((await response.json()).text, 'Direct VUX AI answer.');
-  assert.equal(requestedUrl, 'https://api.deepseek.com/chat/completions');
-  assert.equal(requestBody.model, 'deepseek-flash');
-  assert.deepEqual(requestBody.thinking, { type: 'enabled' });
-  assert.equal(requestBody.reasoning_effort, 'high');
-});
-
 test('Gemini is used for ordinary chat with a systemInstruction field', async () => {
   process.env.GEMINI_API_KEY = 'test-gemini-key';
   let requestedUrl = '';
@@ -272,7 +234,7 @@ test('Gemini retries with its fallback model after a transient error', async () 
   assert.match(geminiUrls[1], /models\/gemini-3.6-flash:/);
 });
 
-test('Gemini falls back after both Hugging Face routes fail for coding requests', async () => {
+test('Gemini falls back after the Hugging Face route fails for coding requests', async () => {
   process.env.GEMINI_API_KEY = 'test-gemini-key';
   const requestedUrls = [];
   globalThis.fetch = async (url) => {
@@ -284,7 +246,7 @@ test('Gemini falls back after both Hugging Face routes fail for coding requests'
   const response = await ask([{ role: 'user', content: 'Debug this JavaScript function.' }]);
   assert.equal(response.status, 200);
   assert.equal((await response.json()).text, 'Fallback answer.');
-  assert.equal(requestedUrls.filter((url) => url.includes('router.huggingface.co')).length, 2);
+  assert.equal(requestedUrls.filter((url) => url.includes('router.huggingface.co')).length, 1);
   assert.ok(requestedUrls.some((url) => url.includes('generativelanguage.googleapis.com')));
 });
 

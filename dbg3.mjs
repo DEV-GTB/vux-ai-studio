@@ -5,7 +5,6 @@ import express from 'express';
 process.env.HF_TOKEN = 'test-huggingface-token';
 process.env.GROQ_API_KEY = '';
 process.env.GEMINI_API_KEY = '';
-process.env.DEEPSEEK_API_KEY = '';
 process.env.CLOUDFLARE_API_TOKEN = '';
 process.env.CLOUDFLARE_ACCOUNT_ID = '';
 

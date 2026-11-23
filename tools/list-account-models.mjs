@@ -59,8 +59,8 @@ for (const [task, list] of [...byCategory.entries()].sort()) {
 // The models the app is configured to use.
 const wanted = [
   'fireworks/ember-1', 'google/gemini-4-argon', 'xai/grok-4.7',
-  '@cf/qwen/qwen3.8-27b', '@cf/google/gemma-4-26b-a4b-it', '@cf/meta/llama-3.2-11b-vision-instruct',
-  '@cf/google/embeddinggemma-300m', '@cf/qwen/qwen3-embedding-0.6b', '@cf/baai/bge-m3',
+  '@cf/qwen/qwen3.8-27b', '@cf/meta/llama-3.2-11b-vision-instruct',
+  '@cf/qwen/qwen3-embedding-0.6b', '@cf/baai/bge-m3',
   'google/gemini-3.8-flash-lite-tts', 'elevenlabs/eleven-v3',
   'assemblyai/universal-3.5-pro', 'openai/gpt-4o-transcribe', 'xai/grok-stt',
   'elevenlabs/music-v2', 'minimax/music-2.6',
