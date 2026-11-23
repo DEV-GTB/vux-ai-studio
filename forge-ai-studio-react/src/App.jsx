@@ -7,6 +7,7 @@ import './index.css'
 // page stays light and fast.
 const Studio = lazy(() => import('./pages/Studio.jsx').then((module) => ({ default: module.Studio })))
 const Image = lazy(() => import('./pages/Image.jsx').then((module) => ({ default: module.Image })))
+const LiveSearch = lazy(() => import('./pages/LiveSearch.jsx').then((module) => ({ default: module.LiveSearch })))
 const Object3D = lazy(() => import('./pages/Object3D.jsx').then((module) => ({ default: module.Object3D })))
 const Vision = lazy(() => import('./features/live-app-vision/VisionWorkspace.jsx').then((module) => ({ default: module.VisionWorkspace })))
 
@@ -28,6 +29,7 @@ const PAGE_PATHS = {
   chat: '/chat',
   studio: '/studio',
   image: '/image-generator',
+  'live-search': '/live-search',
   object3d: '/3d-object-generator',
   vision: '/live-app-vision',
   settings: '/settings',
@@ -43,6 +45,7 @@ const PATH_PAGES = {
   '/studio': 'studio',
   '/image-generator': 'image',
   '/image': 'image',
+  '/live-search': 'live-search',
   '/3d-object-generator': 'object3d',
   '/object3d': 'object3d',
   '/live-app-vision': 'vision',
@@ -119,6 +122,7 @@ function App() {
       case 'chat': return <Chat setCurrentPage={setCurrentPage} username={username} />
       case 'studio': return <Studio username={username} />
       case 'image': return <Image setCurrentPage={setCurrentPage} username={username} />
+      case 'live-search': return <LiveSearch setCurrentPage={setCurrentPage} username={username} />
       case 'object3d': return <Object3D setCurrentPage={setCurrentPage} username={username} />
       case 'vision': return <Vision setCurrentPage={setCurrentPage} username={username} />
       case 'settings': return <Settings setCurrentPage={setCurrentPage} username={username} />
@@ -220,6 +224,18 @@ function App() {
           >
             <span className="text-xl flex-shrink-0">🎨</span>
             {!sidebarCollapsed && <span className="font-medium">Image Generator</span>}
+          </button>
+          <button
+            onClick={() => { setCurrentPage('live-search'); setMobileMenuOpen(false); }}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              currentPage === 'live-search' 
+                ? 'bg-forge-techLight text-forge-tech border-l-2 border-forge-tech' 
+                : 'text-forge-textMuted hover:bg-forge-surfaceLow'
+            }`}
+            title="Live Search"
+          >
+            <span className="text-xl flex-shrink-0">🌐</span>
+            {!sidebarCollapsed && <span className="font-medium">Live Search</span>}
           </button>
           <button
             onClick={() => { setCurrentPage('object3d'); setMobileMenuOpen(false); }}
