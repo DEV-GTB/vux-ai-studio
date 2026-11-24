@@ -10,6 +10,7 @@ import { buildMemoryContext } from '../lib/memory.js';
 import { STUDIO_TOOL_GUIDANCE } from '../lib/promptBuilder.js';
 import { buildLiveContext, getNewsArticles } from '../lib/liveContext.js';
 import { looksLikeSearchRequest, webSearch } from '../lib/webSearch.js';
+import { answerNewsQuestion } from '../lib/newsQA.js';
 import { validateBody, chatBodySchema } from '../lib/requestValidation.js';
 
 const router = Router();
@@ -77,6 +78,32 @@ function looksLikeImageEditRequest(text = '') {
   const value = String(text || '').toLowerCase();
   if (!value.trim()) return false;
   return IMAGE_EDIT_TRIGGERS.some((trigger) => value.includes(trigger));
+}
+
+// News/technology/current-events questions: the chat answers from live news
+// with source links and website names instead of raw training data.
+const NEWS_QUESTION_SIGNALS = [
+  "today's news", 'todays news', 'latest news', 'breaking news', 'news about',
+  'current news', 'recent news', 'what is happening', 'what happened', 'any news',
+  'new technology', 'technology news', 'ai news', 'tech news', 'science news',
+  'world news', 'international news', 'local news', 'national news', 'headlines',
+  'current events', 'today in tech', 'latest in technology', 'what is the latest',
+  'new developments',
+];
+
+function looksLikeNewsQuestion(text = '') {
+  const value = String(text || '').toLowerCase();
+  if (!value.trim()) return false;
+
+  // Direct signal match.
+  if (NEWS_QUESTION_SIGNALS.some((signal) => value.includes(signal))) return true;
+
+  // Topic + news combination: "artificial intelligence news", "climate news", etc.
+  const topicWords = ['ai', 'artificial intelligence', 'technology', 'tech', 'science',
+    'climate', 'politics', 'business', 'health', 'sports', 'world', 'international'];
+  const hasNews = value.includes('news');
+  const hasTopic = topicWords.some((topic) => value.includes(topic));
+  return hasNews && hasTopic;
 }
 
 function findImageDataUrl(content) {
@@ -451,6 +478,34 @@ router.post('/', validateBody(chatBodySchema), async (req, res) => {
       );
     } catch (error) {
       console.warn('[chat] image tool did not answer:', error?.message || error);
+    }
+  }
+
+  // News Q&A: when the user asks about today's news, new technology, or
+  // current events, answer from live news with AI-written paragraphs and
+  // source links + website names for reality verification.
+  if (!hasImageAttachment && looksLikeNewsQuestion(chatImagePrompt)) {
+    try {
+      const qa = await answerNewsQuestion(chatImagePrompt);
+      if (qa.status === 'ok' && qa.answer) {
+        const sourcesBlock = qa.sources && qa.sources.length
+          ? '\n\n## Sources\n' + qa.sources.map((s, i) =>
+            `[${i + 1}] ${s.title} — ${s.source}${s.date ? ` (${new Date(s.date).toLocaleDateString()})` : ''}\n${s.url}`
+          ).join('\n')
+          : '';
+        const fullAnswer = qa.answer + sourcesBlock;
+        return sendChatText(res, scrubIdentity(fullAnswer), `VUX AI News (${qa.newsProvider})`, qa.provider, '', newsImages);
+      }
+      // If the Q&A returned partial results (raw sources only), still show them.
+      if (qa.status === 'partial' && qa.sources && qa.sources.length) {
+        const sourcesBlock = qa.sources.map((s, i) =>
+          `[${i + 1}] ${s.title} — ${s.source}\n${s.url}`
+        ).join('\n');
+        const fullAnswer = `Here is what I found:\n\n${sourcesBlock}`;
+        return sendChatText(res, scrubIdentity(fullAnswer), `VUX AI News (${qa.newsProvider})`, qa.provider, '', newsImages);
+      }
+    } catch (error) {
+      console.warn('[chat] news Q&A failed; falling through to regular providers:', error?.message || error);
     }
   }
 
