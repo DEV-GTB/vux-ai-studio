@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { apiUrl } from '../lib/api.js'
 
 const SUPPORT_GMAIL = 'gtbstudio369@gmail.com'
 
@@ -72,7 +73,7 @@ export function Help({ setCurrentPage: _setCurrentPage, username }) {
     ? helpArticles.filter(a => a.title.toLowerCase().includes(searchQuery.toLowerCase()))
     : helpArticles.filter(a => a.category === selectedCategory && a.title.toLowerCase().includes(searchQuery.toLowerCase()))
 
-  const submitFeedback = () => {
+  const submitFeedback = async () => {
     if (!feedbackText.trim()) return
     const isBug = feedbackType === 'bug'
     const category = isBug ? 'Bug' : 'Suggestion'
@@ -83,7 +84,36 @@ export function Help({ setCurrentPage: _setCurrentPage, username }) {
       '',
       feedbackText.trim(),
     ].join('\n')
+
+    // Try backend email first (SMTP), fall back to mailto
+    try {
+      const response = await fetch(apiUrl('/api/feedback'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: feedbackType, message: feedbackText.trim(), username }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (response.ok && result.success) {
+        if (result.method === 'smtp') {
+          alert('✅ Feedback sent successfully via email!')
+          setFeedbackText('')
+          setFeedbackType(null)
+          return
+        }
+        // mailto fallback - open user's email client
+        window.location.href = result.mailtoUrl
+        setFeedbackText('')
+        setFeedbackType(null)
+        return
+      }
+    } catch {
+      // Backend unreachable, fall through to mailto
+    }
+
+    // Final fallback: mailto link
     window.location.href = `mailto:${SUPPORT_GMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    setFeedbackText('')
+    setFeedbackType(null)
   }
 
   return (

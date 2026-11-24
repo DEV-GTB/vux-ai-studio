@@ -1213,6 +1213,41 @@ function StudioWorkspace({ username }) {
     }
   }
 
+  const importFolderFromDevice = async () => {
+    try {
+      const result = await importProjectFromFolder()
+      if (!result || !result.files) return
+      setProjects((current) => current.map((item, index) => (
+        index === projectIndex ? { ...item, files: { ...item.files, ...result.files }, name: result.name || item.name } : item
+      )))
+      setWorkspaceStatus(`Imported ${Object.keys(result.files).length} files from ${result.name}`)
+      setTerminalHistory((current) => [...current, { type: 'info', text: `Imported ${Object.keys(result.files).length} files from device folder: ${result.name}` }])
+    } catch (error) {
+      setTerminalHistory((current) => [...current, { type: 'error', text: `Import failed: ${error.message}` }])
+    }
+  }
+
+  const downloadWorkspaceZip = async () => {
+    try {
+      const response = await fetch(apiUrl('/api/workspace/zip'), {
+        method: 'POST',
+      })
+      if (!response.ok) throw new Error('Failed to create zip')
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'vux-workspace.zip'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setWorkspaceStatus('Downloaded workspace as ZIP')
+    } catch (error) {
+      setTerminalHistory((current) => [...current, { type: 'error', text: `Zip download failed: ${error.message}` }])
+    }
+  }
+
   const deleteFolder = async (folderName) => {
     if (!confirmPermission(`Delete folder ${folderName} and everything inside it? This cannot be undone.`)) return
     try {
@@ -1736,6 +1771,8 @@ function StudioWorkspace({ username }) {
                   <div className="flex gap-1">
                     <button onClick={() => setShowNewFileInput(!showNewFileInput)} className="p-1 hover:bg-forge-surfaceLow rounded text-xs" title="New File">📄</button>
                     <button onClick={() => setShowNewFolderInput(!showNewFolderInput)} className="p-1 hover:bg-forge-surfaceLow rounded text-xs" title="New Folder">📁</button>
+                    <button onClick={importFolderFromDevice} className="p-1 hover:bg-forge-surfaceLow rounded text-xs" title="Import Folder from Device">📥</button>
+                    <button onClick={downloadWorkspaceZip} className="p-1 hover:bg-forge-surfaceLow rounded text-xs" title="Download Workspace as ZIP">📦</button>
                   </div>
                 </div>
                 

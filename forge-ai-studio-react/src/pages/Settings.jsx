@@ -9,11 +9,32 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
   const [notifications, setNotifications] = useState(true)
   const [autoSave, setAutoSave] = useState(true)
   const [fontSize, setFontSize] = useState(14)
+  const [isLoggedIn, setIsLoggedIn] = useState(true)
 
   // Apply theme to document
   useEffect(() => {
-    document.body.className = theme === 'light' ? 'theme-light' : theme === 'cyber' ? 'theme-cyber' : theme === 'aurora' ? 'theme-aurora' : ''
+    const themeClass = {
+      obsidian: '',
+      light: 'theme-light',
+      cyber: 'theme-cyber',
+      aurora: 'theme-aurora',
+      dark: 'theme-dark',
+      white: 'theme-white',
+      pink: 'theme-pink',
+      green: 'theme-green',
+      brown: 'theme-brown',
+      lavender: 'theme-lavender',
+    }[theme] || ''
+    document.body.className = themeClass
   }, [theme])
+
+  const handleLogout = () => {
+    localStorage.removeItem('vux_onboarded')
+    localStorage.removeItem('vux_username')
+    localStorage.removeItem('vux_vibe')
+    setIsLoggedIn(false)
+    window.location.href = '/login'
+  }
 
   const categories = [
     { id: 'appearance', icon: '🎨', title: 'Appearance', desc: 'Theme, colors, fonts' },
@@ -29,12 +50,18 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
     { id: 'cyber', name: 'Cyber', desc: 'Dark purple with AI energy' },
     { id: 'aurora', name: 'Aurora', desc: 'Dark blue with cyan highlights' },
     { id: 'light', name: 'Light', desc: 'Clean light theme' },
+    { id: 'dark', name: 'Dark', desc: 'Pure dark theme' },
+    { id: 'white', name: 'White', desc: 'Bright white theme' },
+    { id: 'pink', name: 'Pink', desc: 'Soft pink theme' },
+    { id: 'green', name: 'Green', desc: 'Nature green theme' },
+    { id: 'brown', name: 'Brown', desc: 'Earth brown theme' },
+    { id: 'lavender', name: 'Lavender', desc: 'Soft lavender theme' },
   ]
 
   const densities = ['Compact', 'Comfortable', 'Spacious']
 
   return (
-    <div className={`h-[100dvh] flex flex-col lg:flex-row overflow-hidden ${theme === 'light' ? 'theme-light' : theme === 'cyber' ? 'theme-cyber' : theme === 'aurora' ? 'theme-aurora' : ''}`}>
+    <div className={`h-[100dvh] flex flex-col lg:flex-row overflow-hidden ${theme === 'light' ? 'theme-light' : theme === 'cyber' ? 'theme-cyber' : theme === 'aurora' ? 'theme-aurora' : theme === 'dark' ? 'theme-dark' : theme === 'white' ? 'theme-white' : theme === 'pink' ? 'theme-pink' : theme === 'green' ? 'theme-green' : theme === 'brown' ? 'theme-brown' : theme === 'lavender' ? 'theme-lavender' : ''}`}>
       {/* Mobile Header */}
       <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-forge-border bg-forge-surface/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="flex items-center gap-3">
@@ -63,11 +90,7 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
             <button
               key={category.id}
               onClick={() => setActiveCategory(category.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                activeCategory === category.id 
-                  ? 'bg-forge-primaryLight text-forge-primary border-l-2 border-forge-primary' 
-                  : 'text-forge-textMuted hover:bg-forge-surfaceLow'
-              }`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeCategory === category.id ? 'bg-forge-primaryLight text-forge-primary border-l-2 border-forge-primary' : 'text-forge-textMuted hover:bg-forge-surfaceLow'}`}
             >
               <span className="text-xl">{category.icon}</span>
               <div className="text-left">
@@ -81,10 +104,7 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
 
       {/* Mobile Category Selector */}
       <div className="lg:hidden flex items-center gap-2 px-4 py-3 border-b border-forge-border bg-forge-surface">
-        <button 
-          onClick={() => setCategoryPanelOpen(!categoryPanelOpen)}
-          className="flex items-center gap-2 px-3 py-2 bg-forge-surfaceLow border border-forge-border rounded-lg"
-        >
+        <button onClick={() => setCategoryPanelOpen(!categoryPanelOpen)} className="flex items-center gap-2 px-3 py-2 bg-forge-surfaceLow border border-forge-border rounded-lg">
           <span className="text-lg">{categories.find(c => c.id === activeCategory)?.icon}</span>
           <span className="text-sm font-medium">{categories.find(c => c.id === activeCategory)?.title}</span>
           <span>▼</span>
@@ -102,17 +122,12 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
             </div>
             <div className="space-y-1">
               {categories.map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => { setActiveCategory(category.id); setCategoryPanelOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                    activeCategory === category.id 
-                      ? 'bg-forge-primaryLight text-forge-primary' 
-                      : 'text-forge-textMuted hover:bg-forge-surfaceLow'
-                  }`}
-                >
+                <button key={category.id} onClick={() => { setActiveCategory(category.id); setCategoryPanelOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeCategory === category.id ? 'bg-forge-primaryLight text-forge-primary' : 'text-forge-textMuted hover:bg-forge-surfaceLow'}`}>
                   <span className="text-xl">{category.icon}</span>
-                  <div className="font-medium text-sm">{category.title}</div>
+                  <div className="text-left">
+                    <div className="font-medium text-sm">{category.title}</div>
+                    <div className="text-xs text-forge-textDim">{category.desc}</div>
+                  </div>
                 </button>
               ))}
             </div>
@@ -125,25 +140,14 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
         {activeCategory === 'appearance' && (
           <div className="max-w-3xl">
             <h2 className="text-xl font-display font-semibold mb-6">Appearance</h2>
-            
+
             {/* Theme Selection */}
             <div className="mb-8">
               <h3 className="font-medium mb-4">Theme</h3>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 {themes.map((t) => (
-                  <div
-                    key={t.id}
-                    onClick={() => setTheme(t.id)}
-                    className={`bg-forge-surface border rounded-xl p-4 cursor-pointer transition-all hover:transform hover:-translate-y-1 ${
-                      theme === t.id ? 'border-forge-primary ring-2 ring-forge-primary/20' : 'border-forge-border'
-                    }`}
-                  >
-                    <div className={`w-full h-20 rounded-lg mb-3 ${
-                      t.id === 'obsidian' ? 'bg-gradient-to-br from-forge-bg to-forge-surfaceHigh' :
-                      t.id === 'cyber' ? 'bg-gradient-to-br from-purple-900 to-indigo-900' :
-                      t.id === 'aurora' ? 'bg-gradient-to-br from-blue-900 to-cyan-900' :
-                      'bg-gradient-to-br from-gray-100 to-gray-200'
-                    }`}></div>
+                  <div key={t.id} onClick={() => setTheme(t.id)} className={`bg-forge-surface border rounded-xl p-4 cursor-pointer transition-all hover:transform hover:-translate-y-1 ${theme === t.id ? 'border-forge-primary ring-2 ring-forge-primary/20' : 'border-forge-border'}`}>
+                    <div className={`w-full h-20 rounded-lg mb-3 ${t.id === 'obsidian' ? 'bg-gradient-to-br from-forge-bg to-forge-surfaceHigh' : t.id === 'cyber' ? 'bg-gradient-to-br from-purple-900 to-indigo-900' : t.id === 'aurora' ? 'bg-gradient-to-br from-blue-900 to-cyan-900' : t.id === 'light' ? 'bg-gradient-to-br from-gray-100 to-gray-200' : t.id === 'dark' ? 'bg-gradient-to-br from-gray-900 to-black' : t.id === 'white' ? 'bg-gradient-to-br from-white to-gray-100' : t.id === 'pink' ? 'bg-gradient-to-br from-pink-900 to-pink-700' : t.id === 'green' ? 'bg-gradient-to-br from-green-900 to-green-700' : t.id === 'brown' ? 'bg-gradient-to-br from-brown-900 to-brown-700' : t.id === 'lavender' ? 'bg-gradient-to-br from-purple-900 to-purple-700' : 'bg-gradient-to-br from-gray-100 to-gray-200'}`}></div>
                     <div className="font-medium text-sm">{t.name}</div>
                     <div className="text-xs text-forge-textMuted">{t.desc}</div>
                   </div>
@@ -156,13 +160,7 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
               <h3 className="font-medium mb-4">Accent Color</h3>
               <div className="flex gap-3">
                 {['#FF6A00', '#9B59B6', '#00D4FF', '#27AE60', '#E74C3C'].map((color, index) => (
-                  <button
-                    key={index}
-                    className={`w-10 h-10 rounded-full border-2 transition-all ${
-                      color === '#FF6A00' ? 'border-white ring-2 ring-forge-primary/50' : 'border-forge-border'
-                    }`}
-                    style={{ backgroundColor: color }}
-                  />
+                  <button key={index} className={`w-10 h-10 rounded-full border-2 transition-all ${color === '#FF6A00' ? 'border-white ring-2 ring-forge-primary/50' : 'border-forge-border'}`} style={{ backgroundColor: color }} />
                 ))}
               </div>
             </div>
@@ -172,17 +170,7 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
               <h3 className="font-medium mb-4">UI Density</h3>
               <div className="flex gap-2">
                 {densities.map((d) => (
-                  <button
-                    key={d}
-                    onClick={() => setDensity(d.toLowerCase())}
-                    className={`px-4 py-2 rounded-lg transition-all ${
-                      density === d.toLowerCase() 
-                        ? 'bg-forge-primary text-black font-medium' 
-                        : 'bg-forge-surface border border-forge-border text-forge-textMuted hover:bg-forge-surfaceHigh'
-                    }`}
-                  >
-                    {d}
-                  </button>
+                  <button key={d} onClick={() => setDensity(d.toLowerCase())} className={`px-4 py-2 rounded-lg transition-all ${density === d.toLowerCase() ? 'bg-forge-primary text-black font-medium' : 'bg-forge-surface border border-forge-border text-forge-textMuted hover:bg-forge-surfaceHigh'}`}>{d}</button>
                 ))}
               </div>
             </div>
@@ -195,15 +183,8 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
                   <div className="font-medium text-sm">Enable animations</div>
                   <div className="text-xs text-forge-textMuted">Animate transitions and effects</div>
                 </div>
-                <button
-                  onClick={() => setAnimations(!animations)}
-                  className={`w-12 h-6 rounded-full transition-all ${
-                    animations ? 'bg-forge-primary' : 'bg-forge-surfaceHigh'
-                  }`}
-                >
-                  <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                    animations ? 'translate-x-6' : 'translate-x-1'
-                  }`} />
+                <button onClick={() => setAnimations(!animations)} className={`w-12 h-6 rounded-full transition-all ${animations ? 'bg-forge-primary' : 'bg-forge-surfaceHigh'}`}>
+                  <div className={`w-5 h-5 rounded-full bg-white transition-transform ${animations ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
               </div>
             </div>
@@ -216,15 +197,8 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
                   <div className="font-medium text-sm">Enable notifications</div>
                   <div className="text-xs text-forge-textMuted">Get updates and alerts</div>
                 </div>
-                <button
-                  onClick={() => setNotifications(!notifications)}
-                  className={`w-12 h-6 rounded-full transition-all ${
-                    notifications ? 'bg-forge-primary' : 'bg-forge-surfaceHigh'
-                  }`}
-                >
-                  <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                    notifications ? 'translate-x-6' : 'translate-x-1'
-                  }`} />
+                <button onClick={() => setNotifications(!notifications)} className={`w-12 h-6 rounded-full transition-all ${notifications ? 'bg-forge-primary' : 'bg-forge-surfaceHigh'}`}>
+                  <div className={`w-5 h-5 rounded-full bg-white transition-transform ${notifications ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
               </div>
             </div>
@@ -237,15 +211,8 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
                   <div className="font-medium text-sm">Auto save changes</div>
                   <div className="text-xs text-forge-textMuted">Automatically save your work</div>
                 </div>
-                <button
-                  onClick={() => setAutoSave(!autoSave)}
-                  className={`w-12 h-6 rounded-full transition-all ${
-                    autoSave ? 'bg-forge-primary' : 'bg-forge-surfaceHigh'
-                  }`}
-                >
-                  <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                    autoSave ? 'translate-x-6' : 'translate-x-1'
-                  }`} />
+                <button onClick={() => setAutoSave(!autoSave)} className={`w-12 h-6 rounded-full transition-all ${autoSave ? 'bg-forge-primary' : 'bg-forge-surfaceHigh'}`}>
+                  <div className={`w-5 h-5 rounded-full bg-white transition-transform ${autoSave ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
               </div>
             </div>
@@ -254,37 +221,17 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
             <div className="mb-8">
               <h3 className="font-medium mb-4">Font Size</h3>
               <div className="flex items-center gap-4">
-                <input
-                  type="range"
-                  min="12"
-                  max="20"
-                  value={fontSize}
-                  onChange={(e) => setFontSize(parseInt(e.target.value))}
-                  className="flex-1"
-                />
+                <input type="range" min="12" max="20" value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))} className="flex-1" />
                 <span className="text-sm font-medium w-8">{fontSize}px</span>
               </div>
             </div>
 
             {/* Quick Actions */}
             <div className="flex gap-3">
-              <button 
-                onClick={() => {
-                  setTheme('obsidian')
-                  setDensity('comfortable')
-                  setAnimations(true)
-                  setNotifications(true)
-                  setAutoSave(true)
-                  setFontSize(14)
-                }}
-                className="px-4 py-2 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all"
-              >
+              <button onClick={() => { setTheme('obsidian'); setDensity('comfortable'); setAnimations(true); setNotifications(true); setAutoSave(true); setFontSize(14); }} className="px-4 py-2 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all">
                 Reset All Settings
               </button>
-              <button 
-                onClick={() => alert('Settings exported successfully!')}
-                className="px-4 py-2 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all"
-              >
+              <button onClick={() => alert('Settings exported successfully!')} className="px-4 py-2 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all">
                 Export Settings
               </button>
             </div>
@@ -294,17 +241,12 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
         {activeCategory === 'editor' && (
           <div className="max-w-3xl">
             <h2 className="text-xl font-display font-semibold mb-6">Editor Settings</h2>
-            
+
             <div className="mb-8">
               <h3 className="font-medium mb-4">Font Family</h3>
               <div className="grid grid-cols-2 gap-4">
                 {['Inter', 'JetBrains Mono', 'Fira Code', 'Roboto Mono'].map((font) => (
-                  <button
-                    key={font}
-                    className="px-4 py-3 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all"
-                  >
-                    {font}
-                  </button>
+                  <button key={font} className="px-4 py-3 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all">{font}</button>
                 ))}
               </div>
             </div>
@@ -313,12 +255,7 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
               <h3 className="font-medium mb-4">Tab Size</h3>
               <div className="flex gap-2">
                 {[2, 4, 8].map((size) => (
-                  <button
-                    key={size}
-                    className="px-4 py-2 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all"
-                  >
-                    {size} spaces
-                  </button>
+                  <button key={size} className="px-4 py-2 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all">{size} spaces</button>
                 ))}
               </div>
             </div>
@@ -331,18 +268,14 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
                     <div className="font-medium text-sm">Word Wrap</div>
                     <div className="text-xs text-forge-textMuted">Wrap long lines</div>
                   </div>
-                  <button className="w-12 h-6 rounded-full bg-forge-primary transition-all">
-                    <div className="w-5 h-5 rounded-full bg-white transition-transform translate-x-6" />
-                  </button>
+                  <button className="w-12 h-6 rounded-full bg-forge-primary transition-all"><div className="w-5 h-5 rounded-full bg-white transition-transform translate-x-6" /></button>
                 </div>
                 <div className="flex items-center justify-between bg-forge-surface border border-forge-border rounded-lg p-4">
                   <div>
                     <div className="font-medium text-sm">Line Numbers</div>
                     <div className="text-xs text-forge-textMuted">Show line numbers</div>
                   </div>
-                  <button className="w-12 h-6 rounded-full bg-forge-primary transition-all">
-                    <div className="w-5 h-5 rounded-full bg-white transition-transform translate-x-6" />
-                  </button>
+                  <button className="w-12 h-6 rounded-full bg-forge-primary transition-all"><div className="w-5 h-5 rounded-full bg-white transition-transform translate-x-6" /></button>
                 </div>
               </div>
             </div>
@@ -352,17 +285,12 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
         {activeCategory === 'ai' && (
           <div className="max-w-3xl">
             <h2 className="text-xl font-display font-semibold mb-6">AI Behavior Settings</h2>
-            
+
             <div className="mb-8">
               <h3 className="font-medium mb-4">Response Style</h3>
               <div className="grid grid-cols-2 gap-4">
                 {['Concise', 'Detailed', 'Creative', 'Technical'].map((style) => (
-                  <button
-                    key={style}
-                    className="px-4 py-3 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all"
-                  >
-                    {style}
-                  </button>
+                  <button key={style} className="px-4 py-3 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all">{style}</button>
                 ))}
               </div>
             </div>
@@ -375,18 +303,14 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
                     <div className="font-medium text-sm">Code Suggestions</div>
                     <div className="text-xs text-forge-textMuted">Get intelligent code completions</div>
                   </div>
-                  <button className="w-12 h-6 rounded-full bg-forge-primary transition-all">
-                    <div className="w-5 h-5 rounded-full bg-white transition-transform translate-x-6" />
-                  </button>
+                  <button className="w-12 h-6 rounded-full bg-forge-primary transition-all"><div className="w-5 h-5 rounded-full bg-white transition-transform translate-x-6" /></button>
                 </div>
                 <div className="flex items-center justify-between bg-forge-surface border border-forge-border rounded-lg p-4">
                   <div>
                     <div className="font-medium text-sm">Error Detection</div>
                     <div className="text-xs text-forge-textMuted">Automatically detect and fix errors</div>
                   </div>
-                  <button className="w-12 h-6 rounded-full bg-forge-primary transition-all">
-                    <div className="w-5 h-5 rounded-full bg-white transition-transform translate-x-6" />
-                  </button>
+                  <button className="w-12 h-6 rounded-full bg-forge-primary transition-all"><div className="w-5 h-5 rounded-full bg-white transition-transform translate-x-6" /></button>
                 </div>
               </div>
             </div>
@@ -396,19 +320,12 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
         {activeCategory === 'projects' && (
           <div className="max-w-3xl">
             <h2 className="text-xl font-display font-semibold mb-6">Project Settings</h2>
-            
+
             <div className="mb-8">
               <h3 className="font-medium mb-4">Default Project Location</h3>
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  value="C:/Users/Projects"
-                  className="flex-1 bg-forge-surfaceLow border border-forge-border rounded-lg px-4 py-2 text-sm"
-                  readOnly
-                />
-                <button className="px-4 py-2 bg-forge-primary text-black rounded-lg text-sm">
-                  Browse
-                </button>
+                <input type="text" value="C:/Users/Projects" className="flex-1 bg-forge-surfaceLow border border-forge-border rounded-lg px-4 py-2 text-sm" readOnly />
+                <button className="px-4 py-2 bg-forge-primary text-black rounded-lg text-sm">Browse</button>
               </div>
             </div>
 
@@ -416,12 +333,7 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
               <h3 className="font-medium mb-4">Project Templates</h3>
               <div className="grid grid-cols-2 gap-4">
                 {['React', 'Python', 'Node.js', 'TypeScript'].map((template) => (
-                  <button
-                    key={template}
-                    className="px-4 py-3 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all"
-                  >
-                    {template}
-                  </button>
+                  <button key={template} className="px-4 py-3 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all">{template}</button>
                 ))}
               </div>
             </div>
@@ -431,17 +343,12 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
         {activeCategory === 'terminal' && (
           <div className="max-w-3xl">
             <h2 className="text-xl font-display font-semibold mb-6">Terminal Settings</h2>
-            
+
             <div className="mb-8">
               <h3 className="font-medium mb-4">Shell</h3>
               <div className="grid grid-cols-2 gap-4">
                 {['PowerShell', 'CMD', 'Git Bash', 'WSL'].map((shell) => (
-                  <button
-                    key={shell}
-                    className="px-4 py-3 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all"
-                  >
-                    {shell}
-                  </button>
+                  <button key={shell} className="px-4 py-3 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all">{shell}</button>
                 ))}
               </div>
             </div>
@@ -454,9 +361,7 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
                     <div className="font-medium text-sm">Auto-scroll</div>
                     <div className="text-xs text-forge-textMuted">Scroll to bottom on output</div>
                   </div>
-                  <button className="w-12 h-6 rounded-full bg-forge-primary transition-all">
-                    <div className="w-5 h-5 rounded-full bg-white transition-transform translate-x-6" />
-                  </button>
+                  <button className="w-12 h-6 rounded-full bg-forge-primary transition-all"><div className="w-5 h-5 rounded-full bg-white transition-transform translate-x-6" /></button>
                 </div>
               </div>
             </div>
@@ -466,36 +371,36 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
         {activeCategory === 'account' && (
           <div className="max-w-3xl">
             <h2 className="text-xl font-display font-semibold mb-6">Account Settings</h2>
-            
+
             <div className="mb-8">
               <h3 className="font-medium mb-4">Profile</h3>
               <div className="bg-forge-surface border border-forge-border rounded-xl p-6">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-forge-primary to-forge-ai flex items-center justify-center text-white font-bold text-2xl">
-                    {username.charAt(0).toUpperCase()}
-                  </div>
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-forge-primary to-forge-ai flex items-center justify-center text-white font-bold text-2xl">{username.charAt(0).toUpperCase()}</div>
                   <div>
                     <div className="font-semibold text-lg">{username}</div>
                     <div className="text-sm text-forge-textMuted">Developer</div>
                   </div>
                 </div>
-                <button className="px-4 py-2 bg-forge-surfaceLow border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all">
-                  Edit Profile
-                </button>
+                <button className="px-4 py-2 bg-forge-surfaceLow border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all">Edit Profile</button>
               </div>
             </div>
 
             <div className="mb-8">
               <h3 className="font-medium mb-4">Security</h3>
               <div className="space-y-3">
-                <button className="w-full px-4 py-3 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all text-left">
-                  Change Password
-                </button>
-                <button className="w-full px-4 py-3 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all text-left">
-                  Two-Factor Authentication
-                </button>
-                <button className="w-full px-4 py-3 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all text-left">
-                  Active Sessions
+                <button className="w-full px-4 py-3 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all text-left">Change Password</button>
+                <button className="w-full px-4 py-3 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all text-left">Two-Factor Authentication</button>
+                <button className="w-full px-4 py-3 bg-forge-surface border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all text-left">Active Sessions</button>
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <h3 className="font-medium mb-4">Session</h3>
+              <div className="bg-forge-surface border border-forge-border rounded-xl p-6">
+                <p className="text-sm text-forge-textMuted">Your account stays logged in until you clear browser data or log out manually.</p>
+                <button onClick={handleLogout} className="w-full px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/20 transition-all text-left text-sm">
+                  🚪 Log Out
                 </button>
               </div>
             </div>
@@ -506,58 +411,35 @@ export function Settings({ setCurrentPage: _setCurrentPage, username }) {
       {/* Preview Panel - Desktop */}
       <aside className="hidden lg:block w-80 flex-shrink-0 border-l border-forge-border p-4">
         <h3 className="font-display font-semibold mb-4">PREVIEW</h3>
-        
+
         <div className="bg-forge-surface border border-forge-border rounded-xl overflow-hidden mb-4">
           <div className="h-40 bg-gradient-to-br from-forge-bg to-forge-surfaceHigh flex items-center justify-center">
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-2 rounded-lg bg-forge-primary/20 flex items-center justify-center">
-                <span className="text-3xl">⚡</span>
-              </div>
+              <div className="w-16 h-16 mx-auto mb-2 rounded-lg bg-forge-primary/20 flex items-center justify-center"><span className="text-3xl">⚡</span></div>
               <div className="text-sm font-medium">VUX AI</div>
             </div>
           </div>
           <div className="p-4">
             <div className="text-sm font-medium mb-1">{themes.find(t => t.id === theme)?.name}</div>
             <div className="text-xs text-forge-textMuted mb-3">{themes.find(t => t.id === theme)?.desc}</div>
-            <button className="w-full px-4 py-2 bg-forge-surfaceLow border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all">
-              Preview in Studio
-            </button>
+            <button className="w-full px-4 py-2 bg-forge-surfaceLow border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all">Preview in Studio</button>
           </div>
         </div>
 
         <div className="bg-forge-surface border border-forge-border rounded-xl p-4">
           <h4 className="font-medium text-sm mb-3">ABOUT VUX AI</h4>
           <div className="space-y-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-forge-textMuted">Version</span>
-              <span>2.4.0</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-forge-textMuted">Build</span>
-              <span>2024.08.27</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-forge-textMuted">Engine</span>
-              <span>VUX AI</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-forge-textMuted">License</span>
-              <span>MIT</span>
-            </div>
+            <div className="flex justify-between"><span className="text-forge-textMuted">Version</span><span>2.4.0</span></div>
+            <div className="flex justify-between"><span className="text-forge-textMuted">Build</span><span>2024.08.27</span></div>
+            <div className="flex justify-between"><span className="text-forge-textMuted">Engine</span><span>VUX AI</span></div>
+            <div className="flex justify-between"><span className="text-forge-textMuted">License</span><span>MIT</span></div>
           </div>
-          <button className="w-full mt-4 px-4 py-2 bg-forge-surfaceLow border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all">
-            Check for Updates
-          </button>
+          <button className="w-full mt-4 px-4 py-2 bg-forge-surfaceLow border border-forge-border rounded-lg text-sm hover:bg-forge-surfaceHigh transition-all">Check for Updates</button>
         </div>
 
         <div className="mt-4 bg-gradient-to-r from-forge-primary/20 to-forge-ai/20 border border-forge-primary/30 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-forge-primary">✓</span>
-            <span className="text-sm font-medium">Settings synced</span>
-          </div>
-          <p className="text-xs text-forge-textMuted">
-            Changes are saved automatically and synced across your devices.
-          </p>
+          <div className="flex items-center gap-2 mb-2"><span className="text-forge-primary">✓</span><span className="text-sm font-medium">Settings synced</span></div>
+          <p className="text-xs text-forge-textMuted">Changes are saved automatically and synced across your devices.</p>
         </div>
       </aside>
     </div>

@@ -3,6 +3,7 @@ import { lstat, mkdir, readdir, readFile, realpath, rename, rm, writeFile } from
 import { homedir } from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import archiver from 'archiver';
 
 const router = Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -236,6 +237,38 @@ router.delete('/folder', async (req, res) => {
     if (error.code === 'ENOENT') return res.status(404).json({ error: 'FOLDER_NOT_FOUND' });
     if (error.code === 'ENOTEMPTY') return res.status(409).json({ error: 'FOLDER_NOT_EMPTY' });
     return res.status(error.status || 500).json({ error: error.status ? error.message : 'FOLDER_DELETE_FAILED' });
+  }
+});
+
+// Download the entire workspace as a zip file.
+router.post('/zip', async (req, res) => {
+  try {
+    const root = await getRoot();
+    const { files, folders } = await walkWorkspace(root);
+
+    res.setHeader('Content-Disposition', 'attachment; filename="vux-workspace.zip"');
+    res.setHeader('Content-Type', 'application/zip');
+
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    archive.pipe(res);
+
+    // Add each file
+    for (const [relativePath, content] of Object.entries(files)) {
+      const absolutePath = path.resolve(root, ...relativePath.split('/'));
+      archive.file(absolutePath, { name: relativePath });
+    }
+
+    // If no files, add an empty placeholder so the zip isn't invalid
+    if (Object.keys(files).length === 0) {
+      archive.append('', { name: '.vux-empty' });
+    }
+
+    await archive.finalize();
+  } catch (error) {
+    console.error('[workspace] zip failed:', error.message);
+    if (!res.headersSent) {
+      return res.status(500).json({ error: 'ZIP_CREATE_FAILED' });
+    }
   }
 });
 
