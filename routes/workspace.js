@@ -3,7 +3,9 @@ import { lstat, mkdir, readdir, readFile, realpath, rename, rm, writeFile } from
 import { homedir } from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import archiver from 'archiver';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const archiver = require('archiver');
 
 const router = Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
