@@ -14,6 +14,7 @@
 import { Router } from 'express';
 import { liveSearch } from '../lib/liveSearch.js';
 import { newsDigest } from '../lib/newsDigest.js';
+import { newsQA } from '../lib/newsQA.js';
 import { validateBody, validateQuery } from '../lib/requestValidation.js';
 import { z } from 'zod';
 
@@ -61,6 +62,17 @@ router.post('/news/digest', validateBody(newsBodySchema), async (req, res) => {
     return res.json(result);
   } catch (error) {
     return res.status(502).json({ kind: 'news-digest', query: req.body.query, status: 'error', error: String(error?.message || error) });
+  }
+});
+
+// AI news Q&A: the user asks a question; VUX AI answers using real news
+// sources with source links and website names for reality verification.
+router.post('/news/ask', validateBody(newsBodySchema), async (req, res) => {
+  try {
+    const result = await newsQA.answerNewsQuestion(req.body.query);
+    return res.json(result);
+  } catch (error) {
+    return res.status(502).json({ kind: 'news-ask', query: req.body.query, status: 'error', error: String(error?.message || error) });
   }
 });
 

@@ -1,21 +1,23 @@
 // VUX LIVE SEARCH — unified Internet Intelligence UI
 //
-// Four independent tools in one interface:
+// Tabs:
 //   search_web(query)      -> SearXNG / Wikipedia
-//   search_news(query)     -> GDELT / NewsAPI / NewsData / Wikipedia
+//   digest_news(query)     -> AI-written paragraphs per story (Gemini)
+//   ask_news(question)     -> AI answers from real news with sources
 //   read_website(url)      -> Jina Reader / direct HTML
 //   analyze_website(url)   -> cheerio metadata + Jina content
-//   digest_news(query)     -> AI-written professional paragraphs (Gemini)
+//   digest history         -> previously digested news items
 //
 // All API calls go to the backend (/api/search/*). Keys live only on the
 // backend (.env, gitignored). SSRF protection is enforced on the backend.
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { apiUrl } from '../lib/api.js'
 
 const TABS = [
   { id: 'web', label: 'Search Web', icon: '🔍', desc: 'General internet search' },
   { id: 'news', label: 'News Digest', icon: '📰', desc: 'AI-explained headlines & current events' },
+  { id: 'ask', label: 'Ask News', icon: '❓', desc: 'Ask questions from real news with sources' },
   { id: 'read', label: 'Read Website', icon: '📖', desc: 'Readable page content' },
   { id: 'analyze', label: 'Analyze Website', icon: '🧩', desc: 'Site structure & metadata' },
   { id: 'history', label: 'Digest History', icon: '🗂️', desc: 'Previously digested news items' },
@@ -35,6 +37,13 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
   const [newsItems, setNewsItems] = useState([])
   const [newsLoading, setNewsLoading] = useState(false)
   const [newsError, setNewsError] = useState('')
+
+  // Ask news Q&A state
+  const [askQuestion, setAskQuestion] = useState('')
+  const [askAnswer, setAskAnswer] = useState('')
+  const [askSources, setAskSources] = useState([])
+  const [askLoading, setAskLoading] = useState(false)
+  const [askError, setAskError] = useState('')
 
   // Read website state
   const [readUrl, setReadUrl] = useState('')
@@ -63,6 +72,12 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
     'technology updates today',
     'space exploration 2026',
     'climate change latest',
+  ]
+  const sampleAskQuestions = [
+    'What is happening with AI regulation in 2026?',
+    'What are the latest technology breakthroughs?',
+    'What is the current state of climate change policy?',
+    'What happened in the latest space exploration news?',
   ]
 
   const formatDate = (iso) => {
@@ -111,6 +126,30 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
       console.error('News digest error:', error)
     } finally {
       setNewsLoading(false)
+    }
+  }
+
+  const askNews = async () => {
+    if (!askQuestion.trim()) return
+    setAskLoading(true)
+    setAskError('')
+    setAskAnswer('')
+    setAskSources([])
+    try {
+      const response = await fetch(apiUrl('/api/search/news/ask'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: askQuestion.trim() }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'News Q&A failed')
+      setAskAnswer(data.answer || '')
+      setAskSources(data.sources || [])
+    } catch (error) {
+      setAskError(error.message || 'News Q&A could not complete.')
+      console.error('News Q&A error:', error)
+    } finally {
+      setAskLoading(false)
     }
   }
 
@@ -233,7 +272,6 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
           <span>• retrieved {formatDate(item.retrievalTimestamp)}</span>
         </div>
 
-        {/* AI-written professional paragraph — the core deliverable */ }
         {item.aiDigest && (
           <div className="mb-4 pl-4 border-l-2 border-forge-primary bg-forge-surfaceLow rounded-r-lg p-3">
             <p className="text-sm text-forge-text leading-relaxed">
@@ -265,6 +303,26 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
       </article>
     )
   }
+
+  const renderSourceLink = (source, index) => (
+    <div key={index} className="mb-2 pl-4 border-l-2 border-forge-primary bg-forge-surfaceLow rounded-r-lg p-3">
+      <h4 className="text-sm font-semibold text-white mb-1">{source.title}</h4>
+      <p className="text-xs text-forge-textMuted mb-2">
+        {source.source}{source.date ? ` • ${formatDate(source.date)}` : ''}
+      </p>
+      {source.description && (
+        <p className="text-xs text-forge-textMuted mb-2 line-clamp-2">{source.description}</p>
+      )}
+      <a
+        href={source.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs font-medium text-forge-primary hover:underline flex items-center gap-1"
+      >
+        Open source ↗
+      </a>
+    </div>
+  )
 
   return (
     <div className="min-h-screen">
@@ -414,6 +472,59 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
               </div>
             )}
 
+            {activeTab === 'ask' && (
+              <div className="bg-forge-surface border border-forge-border rounded-2xl p-6 scale-in">
+                <h2 className="text-lg font-display font-semibold mb-4 flex items-center gap-2">
+                  <span>❓</span> Ask News
+                </h2>
+                <p className="text-sm text-forge-textMuted mb-4">
+                  Ask any question about news, technology, or rules. VUX AI answers using real news sources with source links and website names for reality verification.
+                </p>
+                <div className="relative mb-4">
+                  <textarea
+                    value={askQuestion}
+                    onChange={(e) => setAskQuestion(e.target.value)}
+                    placeholder="e.g. What is happening with AI regulation in 2026?"
+                    rows={3}
+                    className="w-full bg-forge-surfaceLow border border-forge-border rounded-xl px-4 py-3 text-sm text-forge-text focus:outline-none focus:border-forge-primary transition-all disabled:opacity-50 resize-none"
+                    disabled={askLoading}
+                    onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && askNews()}
+                  />
+                  <button
+                    onClick={askNews}
+                    disabled={askLoading || !askQuestion.trim()}
+                    className="absolute right-2 top-2 w-10 h-10 rounded-lg bg-forge-primary text-black flex items-center justify-center hover:bg-forge-primaryHover disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    {askLoading ? '⏳' : '❓'}
+                  </button>
+                </div>
+                {sampleAskQuestions.length > 0 && (
+                  <div>
+                    <p className="text-xs text-forge-textMuted mb-2">Try these questions:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {sampleAskQuestions.map((q, i) => (
+                        <button
+                          key={i}
+                          onClick={() => { setAskQuestion(q); askNews() }}
+                          className="px-3 py-1.5 bg-forge-surfaceLow border border-forge-border rounded-lg text-xs hover:border-forge-primary transition-all"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {askError && (
+                  <p className="mt-2 rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert">
+                    {askError}
+                  </p>
+                )}
+                {askLoading && !askError && (
+                  <p className="text-sm text-forge-textMuted italic">Searching news and writing AI answer...</p>
+                )}
+              </div>
+            )}
+
             {activeTab === 'read' && (
               <div className="bg-forge-surface border border-forge-border rounded-2xl p-6 scale-in">
                 <h2 className="text-lg font-display font-semibold mb-4 flex items-center gap-2">
@@ -543,6 +654,46 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
                   </div>
                 )}
                 {newsItems.map((item, i) => renderNewsItem(item, i))}
+              </div>
+            )}
+
+            {activeTab === 'ask' && (
+              <div className="bg-forge-surface border border-forge-border rounded-2xl p-6 scale-in">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-display font-semibold flex items-center gap-2">
+                    <span>❓</span> AI Answer
+                  </h2>
+                  <span className="text-xs font-medium bg-forge-surfaceLow px-2 py-1 rounded text-forge-textMuted">
+                    {askAnswer ? 'Answered' : 'No answer yet'}
+                  </span>
+                </div>
+
+                {askAnswer && (
+                  <>
+                    <div className="whitespace-pre-wrap break-words text-sm text-forge-text leading-relaxed bg-forge-surfaceLow border border-forge-border rounded-lg p-4 mb-4">
+                      {askAnswer}
+                    </div>
+
+                    <div className="mb-4">
+                      <h3 className="text-sm font-semibold text-forge-primary mb-2">
+                        Sources ({askSources.length})
+                      </h3>
+                      {askSources.map((source, i) => renderSourceLink(source, i + 1))}
+                    </div>
+
+                    <div className="text-xs text-forge-textMuted mb-4">
+                      AI writing: {askAnswer ? 'VUX AI' : '—'} &nbsp;•&nbsp;
+                      News sources: {askSources.length} &nbsp;•&nbsp;
+                      Retrieved: {formatDate(new Date().toISOString())}
+                    </div>
+                  </>
+                )}
+
+                {!askAnswer && !askLoading && !askError && (
+                  <div className="text-center py-12">
+                    <p className="text-forge-textMuted text-sm">Ask a question to get an AI answer from real news sources.</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -736,11 +887,11 @@ export function LiveSearch({ setCurrentPage: _setCurrentPage, username: _usernam
             <ul className="space-y-2 text-sm text-forge-textMuted">
               <li className="flex items-start gap-2">
                 <span className="text-forge-primary">✓</span>
-                <span>News Digest fetches real-time stories from live sources, then VUX AI writes a professional paragraph for each one.</span>
+                <span>Ask News answers your questions using real news sources with source links and website names for reality verification.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-forge-primary">✓</span>
-                <span>Every digested item is stored one-by-one so nothing is ever lost — check Digest History.</span>
+                <span>Every answer is written by VUX AI in professional paragraphs — never raw links only.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-forge-primary">✓</span>
