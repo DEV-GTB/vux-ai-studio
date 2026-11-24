@@ -1,9 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { apiUrl } from '../lib/api.js'
-
-const SUPPORT_GMAIL = 'gtbstudio369@gmail.com'
-
-import { useEffect } from 'react'
 
 export function Help({ setCurrentPage: _setCurrentPage, username }) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -96,17 +92,6 @@ export function Help({ setCurrentPage: _setCurrentPage, username }) {
 
   const submitFeedback = async () => {
     if (!feedbackText.trim()) return
-    const isBug = feedbackType === 'bug'
-    const category = isBug ? 'Bug' : 'Suggestion'
-    const subject = `[${isBug ? 'Bug Report' : 'Suggestion'}] ${category} from ${username}`
-    const body = [
-      `Account Name: ${username}`,
-      `Report Category: ${category}`,
-      '',
-      feedbackText.trim(),
-    ].join('\n')
-
-    // Try backend email first (SMTP), fall back to mailto
     try {
       const response = await fetch(apiUrl('/api/feedback'), {
         method: 'POST',
@@ -115,26 +100,15 @@ export function Help({ setCurrentPage: _setCurrentPage, username }) {
       })
       const result = await response.json().catch(() => ({}))
       if (response.ok && result.success) {
-        if (result.method === 'smtp') {
-          alert('✅ Feedback sent successfully via email!')
-          setFeedbackText('')
-          setFeedbackType(null)
-          return
-        }
-        // mailto fallback - open user's email client
-        window.location.href = result.mailtoUrl
+        alert('✅ Feedback submitted successfully!')
         setFeedbackText('')
         setFeedbackType(null)
+        loadStoredFeedback()
         return
       }
     } catch {
-      // Backend unreachable, fall through to mailto
+      alert('Could not submit feedback. Please try again.')
     }
-
-    // Final fallback: mailto link
-    window.location.href = `mailto:${SUPPORT_GMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    setFeedbackText('')
-    setFeedbackType(null)
   }
 
   return (
@@ -293,9 +267,8 @@ export function Help({ setCurrentPage: _setCurrentPage, username }) {
           <div className="mt-10 border-t border-forge-border pt-8">
             <h2 className="text-xl font-display font-semibold mb-2">Send Feedback or Report a Bug</h2>
             <p className="text-sm text-forge-textMuted mb-4">
-              Tell us what is wrong or what should improve. Submitting opens your email app addressed to{' '}
-              <span className="text-forge-primary font-medium">{SUPPORT_GMAIL}</span> with your account name and
-              report category included.
+              Tell us what is wrong or what should improve. Your report is saved locally with your account name and
+              report category included. You can view all submitted reports below.
             </p>
             <div className="flex gap-3 mb-4">
               <button
