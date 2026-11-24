@@ -3,11 +3,32 @@ import { apiUrl } from '../lib/api.js'
 
 const SUPPORT_GMAIL = 'gtbstudio369@gmail.com'
 
+import { useEffect } from 'react'
+
 export function Help({ setCurrentPage: _setCurrentPage, username }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [feedbackType, setFeedbackType] = useState(null) // 'suggestion' | 'bug'
   const [feedbackText, setFeedbackText] = useState('')
+  const [storedFeedback, setStoredFeedback] = useState([])
+  const [loadingFeedback, setLoadingFeedback] = useState(false)
+
+  const loadStoredFeedback = async () => {
+    setLoadingFeedback(true)
+    try {
+      const response = await fetch(apiUrl('/api/feedback'))
+      const data = await response.json().catch(() => ({}))
+      if (response.ok) setStoredFeedback(data.items || [])
+    } catch {
+      // best effort
+    } finally {
+      setLoadingFeedback(false)
+    }
+  }
+
+  useEffect(() => {
+    loadStoredFeedback()
+  }, [])
 
   const categories = [
     { id: 'all', name: 'All Topics', icon: '📚' },
@@ -315,6 +336,40 @@ export function Help({ setCurrentPage: _setCurrentPage, username }) {
             >
               {feedbackType === 'bug' ? '📩 Send Bug Report' : '📩 Send Suggestion'}
             </button>
+          </div>
+
+          {/* Previously submitted feedback — stored locally, no email needed */}
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-display font-semibold">Submitted Reports</h3>
+              <button
+                type="button"
+                onClick={loadStoredFeedback}
+                disabled={loadingFeedback}
+                className="text-xs px-3 py-1.5 bg-forge-surfaceLow border border-forge-border rounded-lg hover:bg-forge-surfaceHigh transition-all"
+              >
+                {loadingFeedback ? '⏳' : '🔄 Refresh'}
+              </button>
+            </div>
+            {loadingFeedback && storedFeedback.length === 0 && (
+              <p className="text-sm text-forge-textMuted italic">Loading...</p>
+            )}
+            {!loadingFeedback && storedFeedback.length === 0 && (
+              <p className="text-sm text-forge-textMuted">No reports submitted yet.</p>
+            )}
+            {storedFeedback.map((item) => (
+              <div key={item.id} className="bg-forge-surface border border-forge-border rounded-xl p-4 mb-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded ${item.type === 'bug' ? 'bg-red-500/10 text-red-400' : 'bg-forge-primaryLight text-forge-primary'}`}>
+                    {item.type === 'bug' ? '🐛 Bug' : '💡 Suggestion'}
+                  </span>
+                  <span className="text-xs text-forge-textMuted">{new Date(item.date).toLocaleString()}</span>
+                  {item.emailSent && <span className="text-xs text-green-400">✉️ Email sent</span>}
+                </div>
+                <p className="text-sm font-medium text-white mb-1">{item.username}</p>
+                <p className="text-sm text-forge-textMuted whitespace-pre-wrap">{item.message}</p>
+              </div>
+            ))}
           </div>
         </main>
 

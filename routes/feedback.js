@@ -1,12 +1,15 @@
-// VUX AI Feedback Route — sends bug reports and suggestions to support email.
+// VUX AI Feedback Route — stores bug reports and suggestions locally.
 //
-// Uses nodemailer with a no-reply sender address. If SMTP is not configured,
-// falls back to a mailto: link so the user can still send via their own email client.
+// Reports are saved to data/feedback.jsonl (append-only, one per line) so the
+// user can view them anytime without needing email. SMTP email is still tried
+// first if configured, but storage always succeeds regardless.
 
 import { Router } from 'express';
 import { validateBody } from '../lib/requestValidation.js';
 import { z } from 'zod';
 import nodemailer from 'nodemailer';
+import { appendFile, readFile, mkdir } from 'node:fs/promises';
+import path from 'node:path';
 
 const router = Router();
 
@@ -16,9 +19,32 @@ const feedbackSchema = z.object({
   username: z.string().optional().default('Anonymous'),
 });
 
-// Build a nodemailer transporter. In production, set SMTP_* env vars.
-// Without SMTP configured, the route returns a mailto fallback so the user
-// can still send via their own email client.
+const SUPPORT_EMAIL = 'gtbstudio369@gmail.com';
+const NOREPLY_EMAIL = process.env.SMTP_USER || 'noreply@vux-ai-studio.local';
+const FEEDBACK_DIR = path.join(process.cwd(), 'data');
+const FEEDBACK_FILE = path.join(FEEDBACK_DIR, 'feedback.jsonl');
+
+async function ensureFeedbackDir() {
+  try { await mkdir(FEEDBACK_DIR, { recursive: true }); } catch { /* exists */ }
+}
+
+async function storeFeedback(record) {
+  await ensureFeedbackDir();
+  await appendFile(FEEDBACK_FILE, JSON.stringify(record) + '\n');
+}
+
+async function loadFeedback() {
+  try {
+    await ensureFeedbackDir();
+    const content = await readFile(FEEDBACK_FILE, 'utf8');
+    return String(content).split('\n').filter(Boolean).map((line) => {
+      try { return JSON.parse(line); } catch { return null; }
+    }).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 function buildTransporter() {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT || 587);
@@ -35,9 +61,7 @@ function buildTransporter() {
   });
 }
 
-const SUPPORT_EMAIL = 'gtbstudio369@gmail.com';
-const NOREPLY_EMAIL = process.env.SMTP_USER || 'noreply@vux-ai-studio.local';
-
+// POST /api/feedback — submit a bug report or suggestion
 router.post('/', validateBody(feedbackSchema), async (req, res) => {
   const { type, message, username } = req.body;
   const category = type === 'bug' ? 'Bug Report' : 'Suggestion';
@@ -50,7 +74,25 @@ router.post('/', validateBody(feedbackSchema), async (req, res) => {
     message,
   ].join('\n');
 
-  // Try SMTP first
+  // Always store locally first (no email dependency)
+  const record = {
+    id: Date.now(),
+    type,
+    category,
+    username,
+    message,
+    subject,
+    date: new Date().toISOString(),
+    emailSent: false,
+  };
+
+  try {
+    await storeFeedback(record);
+  } catch (error) {
+    console.error('[feedback] storage failed:', error.message);
+  }
+
+  // Try SMTP email (best-effort, doesn't block)
   const transporter = buildTransporter();
   if (transporter) {
     try {
@@ -60,24 +102,39 @@ router.post('/', validateBody(feedbackSchema), async (req, res) => {
         subject,
         text: body,
       });
-      return res.json({ success: true, method: 'smtp' });
+      // Update record to reflect email was sent
+      record.emailSent = true;
+      await storeFeedback({ ...record, emailSent: true }).catch(() => {});
     } catch (error) {
       console.error('[feedback] SMTP failed:', error.message);
-      // Fall through to mailto
     }
   }
 
-  // Fallback: mailto: link (opens user's email client)
-  const mailtoBody = encodeURIComponent(body);
-  const mailtoSubject = encodeURIComponent(subject);
-  const mailtoUrl = `mailto:${encodeURIComponent(SUPPORT_EMAIL)}?subject=${mailtoSubject}&body=${mailtoBody}`;
-
   return res.json({
     success: true,
-    method: 'mailto',
-    mailtoUrl,
-    note: 'SMTP not configured. Use the mailto link to send via your email client.',
+    method: transporter ? 'smtp' : 'local',
+    note: transporter
+      ? 'Feedback stored and emailed to support.'
+      : 'Feedback stored locally. SMTP not configured — set SMTP_* in .env to enable email.',
   });
+});
+
+// GET /api/feedback — retrieve all stored feedback
+router.get('/', async (_req, res) => {
+  try {
+    const items = await loadFeedback();
+    // Dedupe by id (since re-stores may happen)
+    const seen = new Set();
+    const unique = items.filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+    unique.sort((a, b) => (b.id || 0) - (a.id || 0));
+    return res.json({ items: unique, count: unique.length });
+  } catch (error) {
+    return res.status(500).json({ error: 'Could not load feedback.' });
+  }
 });
 
 export default router;

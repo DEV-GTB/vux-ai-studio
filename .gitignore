@@ -38,3 +38,6 @@ tools/pollinations-nologo-check.mjs
 
 # AI-digested news storage (append-only, contains fetched news content).
 data/news-digest/
+
+# Feedback storage (append-only, contains user reports).
+data/feedback.jsonl
