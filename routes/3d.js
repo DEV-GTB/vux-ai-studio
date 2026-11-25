@@ -6,6 +6,7 @@ import {
   generateGradioText,
   hasGradioSpace,
 } from '../lib/hunyuan3d-2.js';
+import { generateSimple3DModel } from '../lib/simple3d.js';
 const router = Router();
 const GLB_CONTENT_TYPE = 'model/gltf-binary';
 const MAX_GLB_BYTES = 100 * 1024 * 1024;
@@ -325,6 +326,24 @@ router.post('/', async (req, res) => {
       remember(error);
       console.error('[3d] free text generation failed.', error?.message || 'provider-error');
     }
+  }
+
+  // Built-in fallback: generate a simple 3D model (cube/sphere/pyramid) from the
+  // prompt. No external API, no local hosting, no API key required. Always works.
+  try {
+    return sendGlb(res, generateSimple3DModel(prompt.trim()));
+  } catch (error) {
+    remember(error);
+    console.error('[3d] simple model generation failed.', error?.message || 'provider-error');
+  }
+
+  // Built-in fallback: generate a simple 3D model (cube/sphere/pyramid) from the
+  // prompt. No external API, no local hosting, no API key required. Always works.
+  try {
+    return sendGlb(res, generateSimple3DModel(prompt.trim()));
+  } catch (error) {
+    remember(error);
+    console.error('[3d] simple model generation failed.', error?.message || 'provider-error');
   }
 
   try {
