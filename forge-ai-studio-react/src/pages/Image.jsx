@@ -228,7 +228,7 @@ export function Image({ setCurrentPage: _setCurrentPage, username: _username }) 
             <span className="text-xl wave-animation">🎨</span>
           </div>
           <h1 className="text-2xl font-display font-bold text-white">
-            AI Image Generator
+            Lumora — AI Image Generator
           </h1>
         </div>
         <div className="flex items-center gap-2 lg:gap-4">

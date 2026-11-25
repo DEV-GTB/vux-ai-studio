@@ -147,7 +147,7 @@ export function Music({ username: _username }) {
             <span className="text-xl wave-animation">🎵</span>
           </div>
           <h1 className="text-2xl font-display font-bold text-white">
-            AI Music Generator
+            Melora — AI Music Generator
           </h1>
         </div>
       </header>

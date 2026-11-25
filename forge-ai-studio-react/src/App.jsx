@@ -183,7 +183,7 @@ function App() {
             title="Chat"
           >
             <span className="text-xl flex-shrink-0">💬</span>
-            {!sidebarCollapsed && <span className="font-medium">Chat</span>}
+            {!sidebarCollapsed && <span className="font-medium">Chat · Tellio</span>}
           </button>
           <button
             onClick={() => { setCurrentPage('home-controller'); setMobileMenuOpen(false); }}
@@ -207,7 +207,7 @@ function App() {
             title="Studio"
           >
             <span className="text-xl flex-shrink-0">💻</span>
-            {!sidebarCollapsed && <span className="font-medium">Studio</span>}
+            {!sidebarCollapsed && <span className="font-medium">Studio · Devly</span>}
           </button>
           <button
             onClick={() => { setCurrentPage('image'); setMobileMenuOpen(false); }}
@@ -219,7 +219,7 @@ function App() {
             title="Image Generator"
           >
             <span className="text-xl flex-shrink-0">🎨</span>
-            {!sidebarCollapsed && <span className="font-medium">Image Generator</span>}
+            {!sidebarCollapsed && <span className="font-medium">Image · Lumora</span>}
           </button>
           <button
             onClick={() => { setCurrentPage('object3d'); setMobileMenuOpen(false); }}
@@ -231,7 +231,7 @@ function App() {
             title="3D Objects"
           >
             <span className="text-xl flex-shrink-0">🎲</span>
-            {!sidebarCollapsed && <span className="font-medium">3D Objects</span>}
+            {!sidebarCollapsed && <span className="font-medium">3D · Terra</span>}
           </button>
           <button
             onClick={() => { setCurrentPage('vision'); setMobileMenuOpen(false); }}
