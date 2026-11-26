@@ -3,6 +3,7 @@ import { GENERIC_ERROR } from '../lib/identity.js';
 import { validateBody, promptBodySchema } from '../lib/requestValidation.js';
 import { getCloudflareAccounts, getModelList, runCloudflareModel, extractImagePayload, extractAudioPayload, extractVideoPayload, extractTranscription, extractGeneratedText, extractEmbeddings, extractMediaPayload } from '../lib/cloudflare.js';
 import { generate, CAPABILITY } from '../lib/aiProviders.js';
+import { generatePollinationsMusic } from '../lib/pollinationsMusic.js';
 
 const router = Router();
 
@@ -88,7 +89,17 @@ router.post('/', validateBody(promptBodySchema), async (req, res) => {
     const audioBase64 = result.buffer.toString('base64');
     return res.json({ audio: `data:${result.contentType || 'audio/mpeg'};base64,${audioBase64}` });
   } catch (error) {
-    return sendMusicError(res, error);
+    // Fall back to Pollinations free music generation.
+    try {
+      const result = await generatePollinationsMusic(request.prompt, { model: 'google/lyria-3.5' });
+      res.setHeader('X-Vux-AI-Provider', 'Pollinations');
+      res.setHeader('X-Vux-AI-Model', 'google/lyria-3.5');
+      const audioBase64 = result.buffer.toString('base64');
+      return res.json({ audio: `data:${result.contentType || 'audio/mpeg'};base64,${audioBase64}` });
+    } catch (pollError) {
+      console.error('[music] Pollinations fallback failed:', pollError?.message);
+      return sendMusicError(res, error);
+    }
   }
 });
 
