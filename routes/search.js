@@ -59,9 +59,9 @@ router.post('/news', validateBody(newsBodySchema), async (req, res) => {
 router.post('/news/digest', validateBody(newsBodySchema), async (req, res) => {
   try {
     const result = await newsDigest.digestNews(req.body.query);
-    return res.json(result);
+    if (!res.headersSent) return res.json(result);
   } catch (error) {
-    return res.status(502).json({ kind: 'news-digest', query: req.body.query, status: 'error', error: String(error?.message || error) });
+    if (!res.headersSent) return res.status(502).json({ kind: 'news-digest', query: req.body.query, status: 'error', error: String(error?.message || error) });
   }
 });
 
@@ -70,9 +70,9 @@ router.post('/news/digest', validateBody(newsBodySchema), async (req, res) => {
 router.post('/news/ask', validateBody(newsBodySchema), async (req, res) => {
   try {
     const result = await newsQA.answerNewsQuestion(req.body.query);
-    return res.json(result);
+    if (!res.headersSent) return res.json(result);
   } catch (error) {
-    return res.status(502).json({ kind: 'news-ask', query: req.body.query, status: 'error', error: String(error?.message || error) });
+    if (!res.headersSent) return res.status(502).json({ kind: 'news-ask', query: req.body.query, status: 'error', error: String(error?.message || error) });
   }
 });
 
