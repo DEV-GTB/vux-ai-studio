@@ -2,6 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { apiUrl } from '../lib/api.js'
 import { loadChatHistory, saveChatHistory, clearChatHistory } from '../lib/chatStorage.js'
 
+// Browser Speech Recognition (STT) - uses built-in Web Speech API (Chrome)
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+const speechSynthesis = window.speechSynthesis
+
 const codeTokenPattern = /(\/\*[^]*?\*\/|\/\/[^\n]*|#[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b(?:const|let|var|function|return|if|else|for|while|class|import|from|export|async|await|new|true|false|null|undefined|def|print|None|True|False|public|static|void|int|string|boolean)\b|\b\d+(?:\.\d+)?\b)/g
 
 function renderCode(code) {
@@ -139,6 +143,10 @@ export function Chat({ setCurrentPage: _setCurrentPage, username }) {
   const [messages, setMessages] = useState(() => readStoredMessages() || [{ role: 'assistant', content: WELCOME_MESSAGE }])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [isGeneratingMusic, setIsGeneratingMusic] = useState(false)
+  const recognitionRef = useRef(null)
   const [selectedContext, _setSelectedContext] = useState('general')
   const [contextPanelOpen, setContextPanelOpen] = useState(false)
   const [streamingMessage, setStreamingMessage] = useState('')
@@ -554,6 +562,31 @@ export function Chat({ setCurrentPage: _setCurrentPage, username }) {
               className="w-full bg-forge-surfaceLow border border-forge-border rounded-xl px-4 py-3 pr-12 text-sm text-forge-text focus:outline-none focus:border-forge-primary transition-all resize-none placeholder-forge-textDim"
               rows={2}
             />
+            <button
+              onClick={() => {
+                if (!SpeechRecognition) { alert('Voice input not supported in this browser'); return }
+                if (isListening) { recognitionRef.current?.stop(); setIsListening(false); return }
+                const recognition = new SpeechRecognition()
+                recognition.continuous = false
+                recognition.interimResults = true
+                recognition.lang = 'en-US'
+                recognition.onstart = () => setIsListening(true)
+                recognition.onresult = (event) => {
+                  const transcript = Array.from(event.results).map(r => r[0].transcript).join('')
+                  setInput(transcript)
+                }
+                recognition.onend = () => setIsListening(false)
+                recognition.onerror = (e) => { setIsListening(false); console.error('STT error:', e.error) }
+                recognitionRef.current = recognition
+                recognition.start()
+              }}
+              className={`absolute right-12 bottom-3 w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-forge-surfaceLow text-forge-textMuted hover:bg-forge-surfaceHigh'
+              }`}
+              title={isListening ? 'Stop listening' : 'Voice input (STT)'}
+            >
+              {isListening ? '🔴' : '🎤'}
+            </button>
             <button
               onClick={handleSend}
               disabled={isTyping || isStreaming || !input.trim()}
