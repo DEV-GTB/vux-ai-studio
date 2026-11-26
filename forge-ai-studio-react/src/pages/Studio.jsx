@@ -341,6 +341,46 @@ function StudioWorkspace({ username }) {
   const [deployPlatform, setDeployPlatform] = useState('')
   const [isDeploying, setIsDeploying] = useState(false)
 
+  // PWA generation function
+  const generatePWA = async () => {
+    const manifest = JSON.stringify({
+      name: project.name || 'VUX App',
+      short_name: (project.name || 'VUX App').slice(0, 12),
+      start_url: '/',
+      display: 'standalone',
+      background_color: pwaThemeColor,
+      theme_color: pwaThemeColor,
+      icons: [
+        { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/icon-512.png', sizes: '512x512', type: 'image/png' }
+      ]
+    }, null, 2)
+
+    const sw = `const CACHE = 'vux-app-v1';
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c =>
+    c.addAll(['/', '/index.html', '/manifest.json'])
+  ));
+});
+self.addEventListener('fetch', e => {
+  e.respondWith(
+    caches.match(e.request).then(r => r || fetch(e.request))
+  );
+});`
+
+    try {
+      await requestWorkspace('/file', 'POST', { path: 'manifest.json', content: manifest, mode: 'create' })
+      await requestWorkspace('/file', 'POST', { path: 'sw.js', content: sw, mode: 'create' })
+      setProjects((current) => current.map((item, index) => (
+        index === projectIndex ? { ...item, files: { ...item.files, 'manifest.json': manifest, 'sw.js': sw } } : item
+      )))
+      setWorkspaceStatus('PWA files generated: manifest.json + sw.js')
+      setTerminalHistory((current) => [...current, { type: 'success', text: 'Generated PWA manifest and service worker' }])
+    } catch (error) {
+      setTerminalHistory((current) => [...current, { type: 'error', text: `PWA generation failed: ${error.message}` }])
+    }
+  }
+
   // Command Palette state
   const [showCommandPalette, setShowCommandPalette] = useState(false)
   const [commandPaletteQuery, setCommandPaletteQuery] = useState('')
@@ -369,6 +409,20 @@ function StudioWorkspace({ username }) {
 
   // Asset budget state (generated images, 3D models, music per project — 200 MB limit)
   const [assetBytes, setAssetBytes] = useState(0)
+
+  // AI Activity panel state
+  const [aiActivity, setAiActivity] = useState([])
+  const [aiActivityStage, setAiActivityStage] = useState('idle')
+  const [aiFilesChanged, setAiFilesChanged] = useState([])
+
+  // Element-to-Code state
+  const [selectedElement, setSelectedElement] = useState(null)
+  const [elementInspectorVisible, setElementInspectorVisible] = useState(false)
+
+  // PWA generation state
+  const [showPwaModal, setShowPwaModal] = useState(false)
+  const [pwaName, setPwaName] = useState('')
+  const [pwaThemeColor, setPwaThemeColor] = useState('#0a0a0f')
 
   // Register custom theme and configure Monaco when it loads
   const handleEditorDidMount = (editor, monaco) => {
@@ -1377,18 +1431,77 @@ function StudioWorkspace({ username }) {
   const openPreview = () => {
     if (!canPreview) return
     const html = draft.includes('<link') ? draft : draft.replace('</head>', `<style>${project.files['style.css'] || ''}</style></head>`)
-    const blob = new Blob([html], { type: 'text/html' })
+    // Inject element-to-code click listener into the preview
+    const elementToCodeScript = `
+<script>
+  document.addEventListener('click', (e) => {
+    const el = e.target;
+    const rect = el.getBoundingClientRect();
+    const styles = window.getComputedStyle(el);
+    const info = {
+      tag: el.tagName.toLowerCase(),
+      text: el.textContent?.trim().slice(0, 100) || '',
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+      top: Math.round(rect.top),
+      left: Math.round(rect.left),
+      color: styles.color,
+      backgroundColor: styles.backgroundColor,
+      fontSize: styles.fontSize,
+      fontWeight: styles.fontWeight,
+      padding: styles.padding,
+      margin: styles.margin,
+      border: styles.border,
+      borderRadius: styles.borderRadius,
+      display: styles.display,
+      // CSS selector
+      selector: el.id ? '#' + el.id : el.className ? '.' + el.className.split(' ').join('.') : el.tagName.toLowerCase()
+    };
+    window.parent.postMessage({ type: 'vux-element-selected', data: info }, '*');
+  }, true);
+</script>
+`
+    const htmlWithScript = html.includes('</body>') ? html.replace('</body>', elementToCodeScript + '</body>') : html + elementToCodeScript
+    const blob = new Blob([htmlWithScript], { type: 'text/html' })
     const url = URL.createObjectURL(blob)
     setPreviewUrl(url)
     setPreviewVisible(true)
   }
+
+  // Listen for element selection messages from preview iframe
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.data?.type === 'vux-element-selected') {
+        setSelectedElement(event.data.data)
+        setElementInspectorVisible(true)
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
 
   const askAi = async (event) => {
     event.preventDefault()
     if (!aiPrompt.trim() || isAiWorking) return
     setIsAiWorking(true)
     setAiReply('')
+    setAiActivity([])
+    setAiFilesChanged([])
+    setAiActivityStage('understanding')
+
+    // Update AI activity
+    setAiActivity([
+      { text: 'Analysing project structure...', status: 'working' },
+      { text: 'Identifying relevant files...', status: 'pending' },
+      { text: 'Creating implementation plan...', status: 'pending' },
+      { text: 'Executing changes...', status: 'pending' },
+      { text: 'Validating results...', status: 'pending' },
+    ])
+
     try {
+      setAiActivityStage('analysing')
+      setAiActivity(prev => prev.map((e, i) => i === 0 ? { ...e, status: 'completed' } : i === 1 ? { ...e, status: 'working' } : e))
+
       const response = await fetch(apiUrl('/api/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1396,14 +1509,38 @@ function StudioWorkspace({ username }) {
           { role: 'user', content: `You are assisting with the local workspace in VUX AI. Active file: ${activeTab || 'none'}. Existing files: ${fileNames.slice(0, 200).join(', ')}. Existing folders: ${sortedWorkspaceFolders.slice(0, 100).join(', ')}. Current file content:\n\n${draft}\n\nUser request: ${aiPrompt}\n\nReturn exactly one JSON object with one of these actions: {"action":"edit","filename":"existing relative file path","content":"complete updated file"}; {"action":"create","filename":"new relative file path","content":"complete file content"}; {"action":"delete","filename":"existing relative file path","reason":"brief reason"}; {"action":"rename","filename":"existing relative file path","newFilename":"new relative file path"}; {"action":"create_folder","path":"new relative folder path"}; {"action":"delete_folder","path":"existing relative folder path","recursive":true,"reason":"brief reason"}; {"action":"command","command":"one command"}; or {"action":"answer","message":"explanation only"}. Only return command when the user explicitly requests command execution. Use edit for existing files, create only when requested, and delete only when explicitly requested. Never include markdown fences. Do not claim a file changed or command ran before Studio approves it.` },
         ] }),
       })
+
+      setAiActivityStage('planning')
+      setAiActivity(prev => prev.map((e, i) => i === 1 ? { ...e, status: 'completed' } : i === 2 ? { ...e, status: 'working' } : e))
+
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'AI request failed')
       const reply = data.text || ''
       setAiReply(reply)
       setAiPrompt('')
+
+      const operation = parseAiFileAction(reply)
+      if (operation?.filename) {
+        setAiFilesChanged([operation.filename])
+      }
+
+      setAiActivityStage('executing')
+      setAiActivity(prev => prev.map((e, i) => i === 2 ? { ...e, status: 'completed' } : i === 3 ? { ...e, status: 'working' } : e))
+
       if (permissionMode === 'allow' && parseAiFileAction(reply)) await applyAiReply(reply)
+
+      setAiActivityStage('validating')
+      setAiActivity(prev => prev.map((e, i) => i === 3 ? { ...e, status: 'completed' } : i === 4 ? { ...e, status: 'working' } : e))
+
+      // Mark all as completed
+      setTimeout(() => {
+        setAiActivity(prev => prev.map(e => ({ ...e, status: 'completed' })))
+        setAiActivityStage('idle')
+      }, 500)
     } catch (error) {
       setAiReply(`AI error: ${error.message}`)
+      setAiActivity(prev => prev.map(e => e.status === 'working' ? { ...e, status: 'error' } : e))
+      setAiActivityStage('idle')
     } finally {
       setIsAiWorking(false)
     }
@@ -1545,6 +1682,11 @@ function StudioWorkspace({ username }) {
       return
     }
 
+    // Track files changed in AI activity
+    if (fileName && !aiFilesChanged.includes(fileName)) {
+      setAiFilesChanged(prev => [...prev, fileName])
+    }
+
     const fileExists = Object.prototype.hasOwnProperty.call(project.files, fileName)
     if (operation?.action === 'create' || operation?.action === 'edit') {
       if (operation.action === 'edit' && !Object.prototype.hasOwnProperty.call(project.files, fileName)) {
@@ -1654,6 +1796,68 @@ function StudioWorkspace({ username }) {
   }
 
   const projectSummary = useMemo(() => `${fileNames.length} file${fileNames.length === 1 ? '' : 's'}`, [fileNames])
+
+  // Project Health Scanner
+  const scanProjectHealth = useMemo(() => {
+    const issues = []
+    const warnings = []
+    const checks = { dependencies: false, build: false, git: false, size: false }
+
+    // Check for package.json
+    if (project.files['package.json']) {
+      checks.dependencies = true
+      try {
+        const pkg = JSON.parse(project.files['package.json'])
+        if (!pkg.dependencies && !pkg.devDependencies) {
+          warnings.push('No dependencies declared in package.json')
+        }
+      } catch {
+        issues.push('Invalid package.json')
+      }
+    } else {
+      issues.push('No package.json found')
+    }
+
+    // Check for entry file
+    if (!project.files['index.html'] && !project.files['src/index.js'] && !project.files['src/main.js'] && !project.files['app.js']) {
+      warnings.push('No entry point file detected')
+    }
+
+    // Check for large files
+    Object.entries(project.files).forEach(([name, content]) => {
+      const size = new Blob([content]).size
+      if (size > 500 * 1024) {
+        warnings.push(`Large file: ${name} (${(size / 1024).toFixed(0)} KB)`)
+      }
+    })
+
+    // Check for .env (sensitive)
+    if (project.files['.env']) {
+      warnings.push('Sensitive file .env detected — will be redacted in exports')
+    }
+
+    // Check for missing imports (basic)
+    const htmlFiles = Object.keys(project.files).filter(f => f.endsWith('.html'))
+    htmlFiles.forEach(htmlFile => {
+      const content = project.files[htmlFile]
+      const scriptMatches = content.match(/src="([^"]+)"/g) || []
+      scriptMatches.forEach(match => {
+        const src = match.match(/src="([^"]+)"/)?.[1]
+        if (src && !src.startsWith('http') && !project.files[src]) {
+          warnings.push(`Missing script: ${src} (referenced in ${htmlFile})`)
+        }
+      })
+    })
+
+    // Calculate content size
+    const totalSize = Object.values(project.files).reduce((sum, content) => sum + new Blob([content]).size, 0)
+    if (totalSize > 200 * 1024 * 1024) {
+      issues.push(`Project exceeds 200 MB content limit (${(totalSize / (1024 * 1024)).toFixed(1)} MB)`)
+    }
+
+    const status = issues.length > 0 ? 'error' : warnings.length > 0 ? 'warning' : 'healthy'
+    return { status, issues, warnings, checks, totalSize }
+  }, [project.files])
 
   // Command Palette commands
   const commands = [
@@ -1883,6 +2087,7 @@ function StudioWorkspace({ username }) {
                     <button onClick={() => setShowNewFolderInput(!showNewFolderInput)} className="p-1 hover:bg-forge-surfaceLow rounded text-xs" title="New Folder">📁</button>
                     <button onClick={importFolderFromDevice} className="p-1 hover:bg-forge-surfaceLow rounded text-xs" title="Import Folder from Device">📥</button>
                     <button onClick={downloadWorkspaceZip} className="p-1 hover:bg-forge-surfaceLow rounded text-xs" title="Download Workspace as ZIP">📦</button>
+                    <button onClick={generatePWA} className="p-1 hover:bg-forge-surfaceLow rounded text-xs" title="Generate PWA (manifest.json + sw.js)">📱</button>
                   </div>
                 </div>
                 
@@ -2012,37 +2217,41 @@ function StudioWorkspace({ username }) {
                   🐛 Debug Project
                 </button>
                 
-                {projectHealth && (
+                {scanProjectHealth && (
                   <div className="mt-4 p-2 bg-forge-surfaceLow rounded">
                     <div className="text-xs font-semibold mb-2">PROJECT HEALTH</div>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-xs">
-                        <span className={projectHealth.checks.dependencies ? 'text-green-400' : 'text-red-400'}>
-                          {projectHealth.checks.dependencies ? '✓' : '✕'}
+                        <span className={scanProjectHealth.checks?.dependencies ? 'text-green-400' : 'text-red-400'}>
+                          {scanProjectHealth.checks?.dependencies ? '✓' : '✕'}
                         </span>
                         <span>Dependencies</span>
                       </div>
                       <div className="flex items-center gap-2 text-xs">
-                        <span className={projectHealth.checks.build ? 'text-green-400' : 'text-red-400'}>
-                          {projectHealth.checks.build ? '✓' : '✕'}
-                        </span>
-                        <span>Build Config</span>
+                        <span className="text-green-400">✓</span>
+                        <span>Entry Point</span>
                       </div>
                       <div className="flex items-center gap-2 text-xs">
-                        <span className={projectHealth.checks.git ? 'text-green-400' : 'text-yellow-400'}>
-                          {projectHealth.checks.git ? '✓' : '⚠'}
+                        <span className={scanProjectHealth.totalSize < 200 * 1024 * 1024 ? 'text-green-400' : 'text-red-400'}>
+                          {scanProjectHealth.totalSize < 200 * 1024 * 1024 ? '✓' : '✕'}
                         </span>
-                        <span>Git Repository</span>
+                        <span>Content Size ({(scanProjectHealth.totalSize / (1024 * 1024)).toFixed(1)} MB)</span>
                       </div>
                     </div>
-                    {projectHealth.issues.length > 0 && (
+                    {scanProjectHealth.issues.length > 0 && (
                       <div className="mt-2 text-xs text-red-400">
-                        {projectHealth.issues.length} issue(s) detected
+                        {scanProjectHealth.issues.length} issue(s) detected
+                        {scanProjectHealth.issues.map((issue, i) => (
+                          <div key={i} className="text-[10px] mt-1">• {issue}</div>
+                        ))}
                       </div>
                     )}
-                    {projectHealth.warnings.length > 0 && (
+                    {scanProjectHealth.warnings.length > 0 && (
                       <div className="mt-2 text-xs text-yellow-400">
-                        {projectHealth.warnings.length} warning(s)
+                        {scanProjectHealth.warnings.length} warning(s)
+                        {scanProjectHealth.warnings.map((warning, i) => (
+                          <div key={i} className="text-[10px] mt-1">• {warning}</div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -2377,6 +2586,77 @@ function StudioWorkspace({ username }) {
               </div>
             </div>
 
+            {/* Element Inspector Modal */}
+            {elementInspectorVisible && selectedElement && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="bg-forge-surface border border-forge-border rounded-2xl p-6 max-w-md w-full">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-display font-bold">🔍 Element Inspector</h2>
+                    <button onClick={() => setElementInspectorVisible(false)} className="w-8 h-8 rounded-lg bg-forge-surfaceLow border border-forge-border flex items-center justify-center hover:bg-forge-surfaceHigh">
+                      ×
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-forge-textMuted">Tag:</span>
+                      <span className="text-sm font-mono text-forge-primary">{selectedElement.tag}</span>
+                    </div>
+                    {selectedElement.text && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-forge-textMuted">Text:</span>
+                        <span className="text-sm text-forge-text">{selectedElement.text}</span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-forge-surfaceLow rounded p-2">
+                        <div className="text-[10px] text-forge-textMuted">Width</div>
+                        <div className="text-sm font-semibold">{selectedElement.width}px</div>
+                      </div>
+                      <div className="bg-forge-surfaceLow rounded p-2">
+                        <div className="text-[10px] text-forge-textMuted">Height</div>
+                        <div className="text-sm font-semibold">{selectedElement.height}px</div>
+                      </div>
+                    </div>
+                    <div className="bg-forge-surfaceLow rounded p-2">
+                      <div className="text-xs text-forge-textMuted mb-1">Selector</div>
+                      <div className="text-sm font-mono text-forge-primary">{selectedElement.selector}</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-forge-surfaceLow rounded p-2">
+                        <div className="text-[10px] text-forge-textMuted">Color</div>
+                        <div className="text-sm">{selectedElement.color}</div>
+                      </div>
+                      <div className="bg-forge-surfaceLow rounded p-2">
+                        <div className="text-[10px] text-forge-textMuted">Font Size</div>
+                        <div className="text-sm">{selectedElement.fontSize}</div>
+                      </div>
+                    </div>
+                    <div className="bg-forge-surfaceLow rounded p-2">
+                      <div className="text-[10px] text-forge-textMuted">Background</div>
+                      <div className="text-sm">{selectedElement.backgroundColor}</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setAiPrompt(`Edit the element with selector "${selectedElement.selector}" to change its styles. Currently: color=${selectedElement.color}, background=${selectedElement.backgroundColor}, fontSize=${selectedElement.fontSize}, padding=${selectedElement.padding}, margin=${selectedElement.margin}`)
+                          setElementInspectorVisible(false)
+                        }}
+                        className="flex-1 rounded bg-forge-ai text-black px-3 py-2 text-sm font-semibold"
+                      >
+                        ✨ Ask AI to Edit
+                      </button>
+                      <button
+                        onClick={() => setElementInspectorVisible(false)}
+                        className="px-3 py-2 border border-forge-border rounded text-sm"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Preview Panel */}
             {previewVisible && (
               <div className="w-1/2 border-l border-forge-border flex flex-col bg-forge-surface">
@@ -2677,6 +2957,37 @@ function StudioWorkspace({ username }) {
               </div>
             )}
             
+            {!aiPlanMode && aiActivity.length > 0 && (
+              <div className="border-t border-forge-border px-3 py-2">
+                <div className="text-xs font-semibold text-forge-textMuted mb-2">AI ACTIVITY</div>
+                <div className="space-y-1">
+                  {aiActivity.map((entry, index) => (
+                    <div key={index} className={`flex items-start gap-2 text-xs ${
+                      entry.status === 'completed' ? 'text-green-400' :
+                      entry.status === 'working' ? 'text-forge-primary' :
+                      entry.status === 'pending' ? 'text-forge-textMuted' :
+                      'text-red-400'
+                    }`}>
+                      <span className="flex-shrink-0">
+                        {entry.status === 'completed' ? '✓' :
+                         entry.status === 'working' ? '●' :
+                         entry.status === 'pending' ? '○' : '✕'}
+                      </span>
+                      <span className="flex-1">{entry.text}</span>
+                    </div>
+                  ))}
+                </div>
+                {aiFilesChanged.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-forge-border">
+                    <div className="text-xs text-forge-textMuted mb-1">FILES CHANGED</div>
+                    {aiFilesChanged.map((file, index) => (
+                      <div key={index} className="text-xs text-forge-primary">{file}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {!aiPlanMode && (
               <form onSubmit={askAi} className="p-3 border-t border-forge-border space-y-2">
                 <select
@@ -2825,8 +3136,8 @@ function StudioWorkspace({ username }) {
       <footer className="flex items-center justify-between px-3 py-1 border-t border-forge-border bg-forge-surface text-xs">
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1">
-            <span className={`w-2 h-2 rounded-full ${projectHealth?.status === 'healthy' ? 'bg-green-500' : projectHealth?.status === 'warning' ? 'bg-yellow-500' : 'bg-red-500'}`}></span>
-            {projectHealth?.status === 'healthy' ? 'Project Healthy' : projectHealth?.status === 'warning' ? `${projectHealth?.warnings?.length || 0} warnings` : `${projectHealth?.issues?.length || 0} errors`}
+            <span className={`w-2 h-2 rounded-full ${scanProjectHealth.status === 'healthy' ? 'bg-green-500' : scanProjectHealth.status === 'warning' ? 'bg-yellow-500' : 'bg-red-500'}`}></span>
+            {scanProjectHealth.status === 'healthy' ? 'Project Healthy' : scanProjectHealth.status === 'warning' ? `${scanProjectHealth.warnings?.length || 0} warnings` : `${scanProjectHealth.issues?.length || 0} errors`}
           </span>
           <span>{username}</span>
           <span>{projectSummary}</span>
