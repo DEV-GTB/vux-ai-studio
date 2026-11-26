@@ -424,6 +424,84 @@ self.addEventListener('fetch', e => {
   const [pwaName, setPwaName] = useState('')
   const [pwaThemeColor, setPwaThemeColor] = useState('#0a0a0f')
 
+  // Asset Lab state
+  const [showAssetLab, setShowAssetLab] = useState(false)
+  const [assetPrompt, setAssetPrompt] = useState('')
+  const [assetType, setAssetType] = useState('image')
+  const [isGeneratingAsset, setIsGeneratingAsset] = useState(false)
+
+  // Asset Lab generation function
+  const generateAsset = async () => {
+    if (!assetPrompt.trim() || isGeneratingAsset) return
+    setIsGeneratingAsset(true)
+    try {
+      let endpoint = ''
+      let body = {}
+      if (assetType === 'image') {
+        endpoint = '/api/image'
+        body = { prompt: assetPrompt, width: 1024, height: 1024 }
+      } else if (assetType === '3d') {
+        endpoint = '/api/3d'
+        body = { prompt: assetPrompt }
+      } else if (assetType === 'music') {
+        endpoint = '/api/music'
+        body = { prompt: assetPrompt, duration: 30 }
+      } else if (assetType === 'tts') {
+        endpoint = '/api/tts'
+        body = { text: assetPrompt }
+      }
+
+      const response = await fetch(apiUrl(endpoint), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) throw new Error('Asset generation failed')
+
+      if (assetType === 'image') {
+        const blob = await response.blob()
+        const reader = new FileReader()
+        reader.onload = async () => {
+          const base64 = reader.result.split(',')[1]
+          const path = `assets/image-${Date.now()}.png`
+          await requestWorkspace('/file', 'POST', { path, content: atob(base64), mode: 'create' })
+          setWorkspaceStatus(`Generated image: ${path}`)
+        }
+        reader.readAsDataURL(blob)
+      } else if (assetType === 'music') {
+        const data = await response.json()
+        if (data.audio_base64) {
+          const audioBytes = Uint8Array.from(atob(data.audio_base64), c => c.charCodeAt(0))
+          const path = `assets/music-${Date.now()}.mp3`
+          await requestWorkspace('/file', 'POST', { path, content: String.fromCharCode(...audioBytes), mode: 'create' })
+          setWorkspaceStatus(`Generated music: ${path}`)
+        }
+      } else if (assetType === 'tts') {
+        const blob = await response.blob()
+        const reader = new FileReader()
+        reader.onload = async () => {
+          const base64 = reader.result.split(',')[1]
+          const path = `assets/speech-${Date.now()}.mp3`
+          await requestWorkspace('/file', 'POST', { path, content: atob(base64), mode: 'create' })
+          setWorkspaceStatus(`Generated speech: ${path}`)
+        }
+        reader.readAsDataURL(blob)
+      } else {
+        const data = await response.json()
+        if (data.path) {
+          setWorkspaceStatus(`Generated 3D model: ${data.path}`)
+        }
+      }
+
+      setTerminalHistory((current) => [...current, { type: 'success', text: `Asset generated: ${assetType}` }])
+    } catch (error) {
+      setTerminalHistory((current) => [...current, { type: 'error', text: `Asset generation failed: ${error.message}` }])
+    } finally {
+      setIsGeneratingAsset(false)
+    }
+  }
+
   // Register custom theme and configure Monaco when it loads
   const handleEditorDidMount = (editor, monaco) => {
     setMonaco(monaco)
@@ -2088,6 +2166,7 @@ self.addEventListener('fetch', e => {
                     <button onClick={importFolderFromDevice} className="p-1 hover:bg-forge-surfaceLow rounded text-xs" title="Import Folder from Device">📥</button>
                     <button onClick={downloadWorkspaceZip} className="p-1 hover:bg-forge-surfaceLow rounded text-xs" title="Download Workspace as ZIP">📦</button>
                     <button onClick={generatePWA} className="p-1 hover:bg-forge-surfaceLow rounded text-xs" title="Generate PWA (manifest.json + sw.js)">📱</button>
+                    <button onClick={() => setShowAssetLab(!showAssetLab)} className="p-1 hover:bg-forge-surfaceLow rounded text-xs" title="Asset Lab (Image/3D/Music/Speech)">🎨</button>
                   </div>
                 </div>
                 
@@ -3028,6 +3107,60 @@ self.addEventListener('fetch', e => {
           </aside>
         )}
       </div>
+
+      {/* Asset Lab Modal */}
+      {showAssetLab && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-forge-surface border border-forge-border rounded-2xl p-6 max-w-lg w-full">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-display font-bold">🎨 Asset Lab</h2>
+              <button onClick={() => setShowAssetLab(false)} className="w-8 h-8 rounded-lg bg-forge-surfaceLow border border-forge-border flex items-center justify-center hover:bg-forge-surfaceHigh">
+                ×
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs block mb-2">Asset Type</label>
+                <select
+                  value={assetType}
+                  onChange={(e) => setAssetType(e.target.value)}
+                  className="w-full bg-forge-surfaceLow border border-forge-border rounded px-3 py-2 text-sm"
+                >
+                  <option value="image">🖼️ Image (Cloudflare FLUX)</option>
+                  <option value="3d">🧊 3D Model (Hunyuan)</option>
+                  <option value="music">🎵 Music (ACE-Step)</option>
+                  <option value="tts">🔊 Speech (Groq TTS)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs block mb-2">Prompt / Text</label>
+                <textarea
+                  value={assetPrompt}
+                  onChange={(e) => setAssetPrompt(e.target.value)}
+                  rows={3}
+                  placeholder={assetType === 'tts' ? 'Enter text to speak...' : 'Describe what to generate...'}
+                  className="w-full resize-none rounded-lg border border-forge-border bg-forge-surfaceLow px-3 py-2 text-sm focus:outline-none focus:border-forge-primary"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={generateAsset}
+                  disabled={isGeneratingAsset || !assetPrompt.trim()}
+                  className="flex-1 bg-forge-primary text-black px-4 py-2 rounded-lg font-semibold disabled:opacity-40"
+                >
+                  {isGeneratingAsset ? 'Generating...' : `Generate ${assetType === 'image' ? 'Image' : assetType === '3d' ? '3D Model' : assetType === 'music' ? 'Music' : 'Speech'}`}
+                </button>
+                <button
+                  onClick={() => setShowAssetLab(false)}
+                  className="px-4 py-2 border border-forge-border rounded-lg"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Deployment Modal */}
       {showDeployModal && (
