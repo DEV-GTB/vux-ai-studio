@@ -1,7 +1,7 @@
 {
   "name": "forge-ai-studio",
   "version": "1.0.0",
-  "description": "A web app combining chat, code, and image generation behind one UI powered by the Google Gemini API",
+  "description": "A web app combining chat, code, and creative generation behind one UI powered by free AI services",
   "type": "module",
   "engines": {
     "node": ">=18"

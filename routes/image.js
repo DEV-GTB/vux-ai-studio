@@ -91,7 +91,7 @@ function buildQualityPrompt(prompt, resolution = '1k') {
 
 async function generateGeminiImage(prompt) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('No Gemini key');
+  if (!apiKey) throw new Error('Image generation is not configured right now.');
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${apiKey}`,
     {
@@ -107,11 +107,11 @@ async function generateGeminiImage(prompt) {
   let data = {};
   try { data = text ? JSON.parse(text) : {}; } catch { data = {}; }
   if (!response.ok) {
-    throw new Error(data?.error?.message || 'Gemini image generation failed');
+    throw new Error(data?.error?.message || 'Image generation failed. Please try again.');
   }
   const parts = data?.candidates?.[0]?.content?.parts || [];
   const imagePart = parts.find((p) => p?.inlineData?.data);
-  if (!imagePart) throw new Error('Gemini did not return an image.');
+  if (!imagePart) throw new Error('The image service did not return an image. Please try again.');
   const mimeType = imagePart.inlineData.mimeType || 'image/png';
   return { buffer: Buffer.from(imagePart.inlineData.data, 'base64'), mimeType };
 }

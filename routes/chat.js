@@ -251,7 +251,7 @@ async function callCloudflare(messages, model = process.env.CLOUDFLARE_CHAT_MODE
   let data = {};
   try { data = body ? JSON.parse(body) : {}; } catch { data = {}; }
   if (!response.ok) {
-    throw new Error(data?.errors?.[0]?.message || 'Cloudflare Workers AI request failed');
+    throw new Error(data?.errors?.[0]?.message || 'The AI service could not complete this request. Please try again.');
   }
   const text = (typeof data?.result?.response === 'string' && data.result.response.trim())
     || (typeof data?.result?.choices?.[0]?.message?.content === 'string' && data.result.choices[0].message.content.trim())
@@ -271,7 +271,7 @@ function getCloudflareCodeModels() {
 
 async function callMistral(messages) {
   const apiKey = process.env.MISTRAL_API_KEY;
-  if (!apiKey) throw new Error('No Mistral key');
+  if (!apiKey) throw new Error('The AI service is not configured right now.');
   const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: {

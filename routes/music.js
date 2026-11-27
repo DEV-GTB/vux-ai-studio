@@ -67,7 +67,7 @@ router.post('/', validateBody(promptBodySchema), async (req, res) => {
     return res.status(400).json({ error: 'A prompt is required.' });
   }
   if (!getCloudflareAccounts().length && !process.env.FAL_API_KEY) {
-    return res.status(503).json({ error: 'Music generation is not configured. Add Cloudflare API credentials or a fal API key to the server environment.' });
+    return res.status(503).json({ error: 'Music generation is not configured right now. Please try again later.' });
   }
 
   const request = {

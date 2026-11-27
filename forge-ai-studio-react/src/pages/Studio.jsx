@@ -17,12 +17,8 @@ import {
   supportsFolderAccess,
 } from '../lib/localFiles.js'
 
-// Coding LLM options for the Studio AI assistant. The available alternate
-// models the coding pipeline can use. Real Gemini models power the AI answers.
-const AI_CODING_MODELS = [
-  { value: '@cf/qwen/qwen3.8-27b', label: 'Cloudflare Qwen (@cf/qwen/qwen3.8-27b)' },
-  { value: 'gemini-3.8-flash', label: 'Gemini (gemini-3.8-flash)' },
-]
+// Coding LLM options are handled automatically by the routing system.
+// No manual model selection needed - the backend picks the best available provider.
 
 // Custom Monaco theme to match our dark color scheme
 const forgeDarkTheme = {
@@ -315,7 +311,6 @@ function StudioWorkspace({ username }) {
       return 'ask'
     }
   })
-  const [aiModel, setAiModel] = useState('gemini-3.8-flash')
   const aiOperation = parseAiFileAction(aiReply)
   const aiOperationSummary = describeAiAction(aiOperation)
   const displayedAiReply = aiOperation?.action === 'answer' ? aiOperation.message : aiReply
@@ -1210,7 +1205,6 @@ self.addEventListener('fetch', e => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: aiModel,
           messages: [
             { 
               role: 'user', 
@@ -1583,7 +1577,7 @@ self.addEventListener('fetch', e => {
       const response = await fetch(apiUrl('/api/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: aiModel, messages: [
+        body: JSON.stringify({ messages: [
           { role: 'user', content: `You are assisting with the local workspace in VUX AI. Active file: ${activeTab || 'none'}. Existing files: ${fileNames.slice(0, 200).join(', ')}. Existing folders: ${sortedWorkspaceFolders.slice(0, 100).join(', ')}. Current file content:\n\n${draft}\n\nUser request: ${aiPrompt}\n\nReturn exactly one JSON object with one of these actions: {"action":"edit","filename":"existing relative file path","content":"complete updated file"}; {"action":"create","filename":"new relative file path","content":"complete file content"}; {"action":"delete","filename":"existing relative file path","reason":"brief reason"}; {"action":"rename","filename":"existing relative file path","newFilename":"new relative file path"}; {"action":"create_folder","path":"new relative folder path"}; {"action":"delete_folder","path":"existing relative folder path","recursive":true,"reason":"brief reason"}; {"action":"command","command":"one command"}; or {"action":"answer","message":"explanation only"}. Only return command when the user explicitly requests command execution. Use edit for existing files, create only when requested, and delete only when explicitly requested. Never include markdown fences. Do not claim a file changed or command ran before Studio approves it.` },
         ] }),
       })
@@ -3069,15 +3063,7 @@ self.addEventListener('fetch', e => {
 
             {!aiPlanMode && (
               <form onSubmit={askAi} className="p-3 border-t border-forge-border space-y-2">
-                <select
-                  value={aiModel}
-                  onChange={(event) => setAiModel(event.target.value)}
-                  className="w-full rounded-lg border border-forge-border bg-forge-surfaceLow px-3 py-2 text-sm focus:outline-none focus:border-forge-primary"
-                >
-                  {AI_CODING_MODELS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                <div className="text-xs text-forge-textMuted mb-1">AI routing: automatic (quota-based)</div>
                 <textarea
                   value={aiPrompt}
                   onChange={(event) => setAiPrompt(event.target.value)}
@@ -3126,10 +3112,10 @@ self.addEventListener('fetch', e => {
                   onChange={(e) => setAssetType(e.target.value)}
                   className="w-full bg-forge-surfaceLow border border-forge-border rounded px-3 py-2 text-sm"
                 >
-                  <option value="image">🖼️ Image (Cloudflare FLUX)</option>
-                  <option value="3d">🧊 3D Model (Hunyuan)</option>
-                  <option value="music">🎵 Music (ACE-Step)</option>
-                  <option value="tts">🔊 Speech (Groq TTS)</option>
+                  <option value="image">🖼️ Image Generator</option>
+                  <option value="3d">🧊 3D Model</option>
+                  <option value="music">🎵 Music</option>
+                  <option value="tts">🔊 Speech Generator</option>
                 </select>
               </div>
               <div>

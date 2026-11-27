@@ -2,7 +2,7 @@
 //
 // Tabs:
 //   search_web(query)      -> SearXNG / Wikipedia
-//   digest_news(query)     -> AI-written paragraphs per story (Gemini)
+//   digest_news(query)     -> AI-written paragraphs per story
 //   ask_news(question)     -> AI answers from real news with sources
 //   read_website(url)      -> Jina Reader / direct HTML
 //   analyze_website(url)   -> cheerio metadata + Jina content
