@@ -73,6 +73,11 @@ body {
   color: #dae2fd;
 }
 
+.light body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
@@ -1476,20 +1481,21 @@ body {
   --theme-error: #ff6b6b;
 }
 
-.theme-light {
-  --theme-bg: #ffffff;
-  --theme-surface: #f8f9fa;
-  --theme-surface-low: #e9ecef;
-  --theme-surface-high: #dee2e6;
-  --theme-primary: #4cd7f6;
-  --theme-primary-hover: #06b6d4;
-  --theme-text: #212529;
-  --theme-text-muted: #6c757d;
-  --theme-text-dim: #adb5bd;
-  --theme-border: #dee2e6;
-  --theme-accent: #e89337;
-  --theme-success: #28a745;
-  --theme-error: #dc3545;
+/* Light Theme */
+.light {
+  --theme-bg: #f8fafc;
+  --theme-surface: #ffffff;
+  --theme-surface-low: #f1f5f9;
+  --theme-surface-high: #e2e8f0;
+  --theme-primary: #06b6d4;
+  --theme-primary-hover: #0891b2;
+  --theme-text: #0f172a;
+  --theme-text-muted: #475569;
+  --theme-text-dim: #94a3b8;
+  --theme-border: #cbd5e1;
+  --theme-accent: #677AE5;
+  --theme-success: #2dd4bf;
+  --theme-error: #fb7185;
 }
 
 /* Theme-aware utility classes */

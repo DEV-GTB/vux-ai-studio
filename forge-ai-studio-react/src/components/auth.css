@@ -1,0 +1,140 @@
+.auth-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0B1326 0%, #131B2E 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.auth-container {
+  width: 100%;
+  max-width: 420px;
+  background: #131B2E;
+  border-radius: 20px;
+  box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  margin: 20px;
+  border: 1px solid #26334A;
+}
+
+.auth-header {
+  background: linear-gradient(135deg, #677AE5, #6F65C6);
+  color: white;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.auth-header h1 {
+  font-size: 28px;
+  font-weight: 300;
+  margin: 0;
+  letter-spacing: 2px;
+}
+
+.auth-header p {
+  margin: 10px 0 0;
+  opacity: 0.8;
+  font-size: 14px;
+}
+
+.auth-tabs {
+  display: flex;
+  background: #1B2740;
+  padding: 10px 0;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 12px 0;
+  border: none;
+  background: transparent;
+  color: #B8C8C8;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.auth-tab.active {
+  color: #4CD7F6;
+}
+
+.auth-tab:hover:not(.active) {
+  color: #FFFFFF;
+}
+
+.auth-form {
+  padding: 40px 30px;
+}
+
+.auth-form h2 {
+  margin: -20px -30px 20px;
+  padding: 20px 30px;
+  background: #1B2740;
+  text-align: center;
+  font-size: 18px;
+  color: #B8C8C8;
+  border-radius: 10px 10px 0 0;
+}
+
+.auth-social {
+  padding: 20px 30px;
+  border-top: 1px solid #26334A;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.social-provider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: #1B2740;
+  border: 1px solid #26334A;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s;
+  width: 200px;
+  color: #FFFFFF;
+}
+
+.social-provider:hover {
+  border-color: #4CD7F6;
+  background: #183A4F;
+}
+
+.social-provider.google svg {
+  color: #FB7185;
+}
+
+.social-provider.github svg {
+  color: #FFFFFF;
+}
+
+.social-provider span {
+  font-size: 14px;
+  color: #FFFFFF;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .auth-container {
+    margin: 10px;
+  }
+
+  .auth-form {
+    padding: 30px 20px;
+  }
+
+  .auth-social {
+    padding: 15px 20px;
+  }
+
+  .social-provider {
+    width: 150px;
+    padding: 8px 15px;
+    font-size: 12px;
+  }
+}

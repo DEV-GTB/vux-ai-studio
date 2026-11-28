@@ -1,7 +1,9 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { Landing, Home, HomeController, Chat, Settings, Help, Username, Terms } from './pages'
 import { Logo } from './components/Logo'
+import AuthPage from './components/AuthPage'
 import './index.css'
+import "./components/auth.css"
 
 // Heavy workspaces (code editor + WebGL) are loaded on demand so the initial
 // page stays light and fast.
@@ -11,11 +13,38 @@ const Object3D = lazy(() => import('./pages/Object3D.jsx').then((module) => ({ d
 const Vision = lazy(() => import('./features/live-app-vision/VisionWorkspace.jsx').then((module) => ({ default: module.VisionWorkspace })))
 
 function PageLoader() {
+  const tips = [
+    "💡 Tip: Use Ctrl+K to quickly search across all workspaces",
+    "🎨 Pro tip: Try different aspect ratios for unique image compositions",
+    "⚡ VUX AI can generate code, images, 3D objects, and more!",
+    "🚀 Tip: Save your favorite prompts for quick reuse",
+    "💬 Chat with VUX AI to brainstorm your next big idea",
+    "🔍 Use the search bar to find anything in your projects",
+    "✨ Did you know? VUX AI supports multiple AI providers",
+    "🎯 Pro tip: Organize your projects with folders and tags",
+  ]
+  const [tipIndex, setTipIndex] = React.useState(0)
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setTipIndex((prev) => (prev + 1) % tips.length)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-forge-bg text-forge-text">
-      <div className="flex flex-col items-center gap-4">
-        <Logo className="h-12 w-12 animate-pulse" />
-        <span className="text-sm text-forge-textMuted">Loading workspace…</span>
+      <div className="flex flex-col items-center gap-6 max-w-md text-center px-6">
+        <img src="/vux-logo.png" alt="VUX AI" className="h-16 w-16 animate-pulse" style={{ objectFit: 'contain' }} />
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-sm text-forge-textMuted">Loading workspace…</span>
+          <div className="flex gap-1">
+            <span className="w-2 h-2 rounded-full bg-forge-primary animate-bounce" style={{ animationDelay: '0ms' }} />
+            <span className="w-2 h-2 rounded-full bg-forge-primary animate-bounce" style={{ animationDelay: '150ms' }} />
+            <span className="w-2 h-2 rounded-full bg-forge-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
+        </div>
+        <p className="text-xs text-forge-textDim animate-fade-in">{tips[tipIndex]}</p>
       </div>
     </div>
   )
@@ -34,6 +63,7 @@ const PAGE_PATHS = {
   help: '/help',
   username: '/login',
   terms: '/terms',
+  auth: '/auth',
 }
 
 const PATH_PAGES = {
@@ -51,6 +81,7 @@ const PATH_PAGES = {
   '/help': 'help',
   '/login': 'username',
   '/terms': 'terms',
+  '/auth': 'auth',
 }
 
 function pageFromPath(pathname) {
@@ -68,7 +99,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return !!localStorage.getItem('vux_onboarded')
   })
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [theme, setTheme] = useState(() => localStorage.getItem('vux_theme') || 'dark')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const setCurrentPage = (page) => {
@@ -78,6 +109,12 @@ function App() {
       window.history.pushState({}, '', path)
     }
   }
+
+  useEffect(() => {
+    document.documentElement.classList.remove('dark', 'light')
+    document.documentElement.classList.add(theme)
+    localStorage.setItem('vux_theme', theme)
+  }, [theme])
 
   useEffect(() => {
     const handlePopState = () => {
@@ -90,7 +127,7 @@ function App() {
   }, [isAuthenticated])
 
   const handleGetStarted = () => {
-    setCurrentPage('username')
+    setCurrentPage('auth')
   }
 
   const handleTerms = () => {
@@ -110,6 +147,7 @@ function App() {
     if (!isAuthenticated) {
       if (currentPage === 'username') return <Username onContinue={handleUsernameContinue} />
       if (currentPage === 'terms') return <Terms onBack={() => setCurrentPage('landing')} />
+      if (currentPage === 'auth') return <AuthPage />
       return <Landing onGetStarted={handleGetStarted} onTerms={handleTerms} />
     }
 
@@ -124,6 +162,7 @@ function App() {
       case 'settings': return <Settings setCurrentPage={setCurrentPage} username={username} />
       case 'help': return <Help setCurrentPage={setCurrentPage} username={username} />
       case 'terms': return <Terms onBack={() => setCurrentPage('home')} />
+      case 'auth': return <AuthPage />
       default: return <Home setCurrentPage={setCurrentPage} username={username} />
     }
   }
@@ -289,6 +328,12 @@ function App() {
             className="w-full mt-2 px-4 py-2 text-xs text-forge-textMuted hover:text-forge-text hover:bg-forge-surfaceLow rounded-lg transition-all"
           >
             {sidebarCollapsed ? '→' : '← Collapse'}
+          </button>
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="w-full mt-2 px-4 py-2 text-xs text-forge-textMuted hover:text-forge-text hover:bg-forge-surfaceLow rounded-lg transition-all"
+          >
+            {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
           </button>
         </div>
       </aside>

@@ -16,7 +16,7 @@ export default {
     extend: {
       colors: {
         forge: {
-          // Deep space backgrounds
+          // Deep space backgrounds - VUX palette
           bg: '#0b1326',
           surface: '#0b1326',
           surfaceLow: '#131b2e',
@@ -28,37 +28,37 @@ export default {
           primaryHover: '#06b6d4',
           primaryLight: 'rgba(76, 215, 246, 0.1)',
           
-          // AI purple
-          ai: '#9B59B6',
-          aiLight: 'rgba(155, 89, 182, 0.1)',
-          aiGlow: 'rgba(155, 89, 182, 0.3)',
+          // AI purple - Soft Purple
+          ai: '#8b85f5',
+          aiLight: 'rgba(139, 133, 245, 0.1)',
+          aiGlow: 'rgba(139, 133, 245, 0.3)',
           
-          // Technical cyan
-          tech: '#06b6d4',
-          techLight: 'rgba(6, 182, 212, 0.1)',
+          // Technical cyan - Sky Blue
+          tech: '#38bdf8',
+          techLight: 'rgba(56, 189, 248, 0.1)',
           
-          // Success green
-          success: '#27AE60',
-          successLight: 'rgba(39, 174, 96, 0.1)',
+          // Success - Mint Teal
+          success: '#2dd4bf',
+          successLight: 'rgba(45, 212, 191, 0.1)',
           
-          // Error red
-          error: '#ffb4ab',
-          errorLight: 'rgba(255, 180, 171, 0.1)',
+          // Error - Coral Rose
+          error: '#fb7185',
+          errorLight: 'rgba(251, 113, 133, 0.1)',
           
-          // Warning
-          warning: '#e89337',
-          warningLight: 'rgba(232, 147, 55, 0.1)',
+          // Warning - Warm Amber
+          warning: '#fbbf24',
+          warningLight: 'rgba(251, 191, 36, 0.1)',
           
           // Text hierarchy
           text: '#dae2fd',
-          textMuted: '#bcc9cd',
+          textMuted: '#b8c8c8',
           textDim: '#869397',
           
           // Borders
-          border: 'rgba(61, 73, 76, 0.3)',
-          borderLight: 'rgba(134, 147, 151, 0.3)',
+          border: 'rgba(38, 51, 74, 0.5)',
+          borderLight: 'rgba(38, 51, 74, 0.3)',
           borderActive: 'rgba(76, 215, 246, 0.45)',
-          borderAI: 'rgba(155, 89, 182, 0.4)',
+          borderAI: 'rgba(139, 133, 245, 0.4)',
         },
         // New Landing Page Colors
         vux: {
