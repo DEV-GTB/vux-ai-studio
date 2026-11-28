@@ -41,3 +41,4 @@ data/news-digest/
 
 # Feedback storage (append-only, contains user reports).
 data/feedback.jsonl
+.vercel
