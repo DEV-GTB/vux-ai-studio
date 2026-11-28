@@ -64,6 +64,7 @@ const PAGE_PATHS = {
   username: '/login',
   terms: '/terms',
   auth: '/auth',
+  'auth-callback': '/auth/callback',
 }
 
 const PATH_PAGES = {
@@ -82,6 +83,7 @@ const PATH_PAGES = {
   '/login': 'username',
   '/terms': 'terms',
   '/auth': 'auth',
+  '/auth/callback': 'auth-callback',
 }
 
 function pageFromPath(pathname) {
@@ -148,6 +150,22 @@ function App() {
       if (currentPage === 'username') return <Username onContinue={handleUsernameContinue} />
       if (currentPage === 'terms') return <Terms onBack={() => setCurrentPage('landing')} />
       if (currentPage === 'auth') return <AuthPage />
+      if (currentPage === 'auth-callback') {
+        // Handle OAuth callback - extract token from URL hash
+        const hash = window.location.hash
+        if (hash.includes('access_token')) {
+          const params = new URLSearchParams(hash.substring(1))
+          const token = params.get('access_token')
+          if (token) {
+            localStorage.setItem('vux_supabase_token', token)
+            localStorage.setItem('vux_onboarded', 'true')
+            setIsAuthenticated(true)
+            setCurrentPage('home')
+            return null
+          }
+        }
+        return <AuthPage />
+      }
       return <Landing onGetStarted={handleGetStarted} onTerms={handleTerms} />
     }
 
@@ -163,6 +181,7 @@ function App() {
       case 'help': return <Help setCurrentPage={setCurrentPage} username={username} />
       case 'terms': return <Terms onBack={() => setCurrentPage('home')} />
       case 'auth': return <AuthPage />
+      case 'auth-callback': return <AuthPage />
       default: return <Home setCurrentPage={setCurrentPage} username={username} />
     }
   }
